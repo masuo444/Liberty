@@ -108,6 +108,39 @@ Libertyはそのための共通プラットフォームです。日本酒、工�
 - **60 秒自動クリア**: 入力が無い場合にチャット履歴を初期化
 - **PWA 対応準備**: `manifest.json` と `next-pwa` 設定を追加済み。Vercel へそのままデプロイ可能
 
+## 🚀 Vercelへのデプロイ
+
+### 1. Vercelにデプロイ
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/masuo444/Liberty)
+
+または手動で：
+
+1. https://vercel.com にアクセス
+2. GitHubアカウントでログイン
+3. "Add New..." → "Project"
+4. `masuo444/Liberty` リポジトリをインポート
+
+### 2. 環境変数の設定
+
+Vercel Dashboard → Settings → Environment Variables で以下を設定：
+
+| Key | Value |
+|-----|-------|
+| `OPENAI_API_KEY` | OpenAI APIキー（必須） |
+| `ELEVENLABS_API_KEY` | ElevenLabs APIキー（音声機能用・オプション） |
+
+### 3. 再デプロイ
+
+環境変数を追加・変更した後は、Deployments → Redeploy で再デプロイが必要です。
+
+### 4. アクセス
+
+- **メインアプリ**: `https://[your-app].vercel.app`
+- **管理画面**: `https://[your-app].vercel.app/admin/knowledge`
+
+---
+
 ## 開発を始める
 
 ```bash
