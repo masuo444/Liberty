@@ -22,6 +22,10 @@ const config: Config = {
           900: '#080f40',
         },
       },
+      screens: {
+        'portrait': { 'raw': '(orientation: portrait)' },
+        'landscape': { 'raw': '(orientation: landscape)' },
+      },
     },
   },
   plugins: [],

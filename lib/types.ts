@@ -2,12 +2,21 @@ export type FeatureFlags = {
   chat: boolean;
   stt: boolean;
   tts: boolean;
+  premium_voice?: boolean; // ElevenLabs音声（プレミアムオプション）
+  video?: boolean;
+  companion?: boolean;
+  exhibition?: boolean;
+  knowledge_upload?: boolean;
+  analytics?: boolean;
 };
 
 export type LicensePayload = {
   licenseKey: string;
   features: FeatureFlags;
   expiresAt: string;
+  companyId?: string;
+  companyName?: string;
+  maxUsers?: number;
 };
 
 export type LicenseResponse = {

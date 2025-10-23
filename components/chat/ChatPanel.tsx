@@ -76,7 +76,7 @@ export function ChatPanel({ locale, license }: ChatPanelProps) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-white">Liberty 多言語チャット</h2>
-            <p className="text-sm text-white/70">あなたの知識を世界へ翻訳する AI プレゼンター</p>
+            <p className="text-sm text-white/70">AIプレゼンター</p>
           </div>
           <span className="rounded-full bg-liberty-500/20 px-3 py-1 text-xs text-liberty-100">
             {license.features.tts ? '音声機能：有効' : '音声機能：ロック中'}

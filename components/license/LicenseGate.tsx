@@ -29,7 +29,7 @@ export function LicenseGate({ loading, error, onSubmit }: LicenseGateProps) {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-white">Liberty ライセンス認証</h1>
-            <p className="text-sm text-white/70">FOMUS から発行された 6 桁のキーを入力してください。</p>
+            <p className="text-sm text-white/70">FOMUS から発行されたライセンスキーを入力してください。</p>
           </div>
         </div>
 
@@ -38,11 +38,10 @@ export function LicenseGate({ loading, error, onSubmit }: LicenseGateProps) {
             label="ライセンスキー"
             name="license"
             autoFocus
-            placeholder="LIB-123456"
-            maxLength={10}
+            placeholder="LIBERTY-DEMO-2024-FOMUS"
+            maxLength={50}
             value={key}
             onChange={(event) => setKey(event.target.value.toUpperCase())}
-            pattern="LIB-[0-9]{6}"
             required
           />
           {error && <p className="text-sm text-red-300">{error}</p>}
