@@ -1,0 +1,208 @@
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Assistant IDとVector Store IDを環境変数で管理
+// 初回実行時に自動作成されます
+let assistantId: string | null = null;
+let vectorStoreId: string | null = null;
+
+/**
+ * OpenAI Assistantを取得または作成
+ */
+export async function getOrCreateAssistant() {
+  if (assistantId) {
+    try {
+      const assistant = await openai.beta.assistants.retrieve(assistantId);
+      return assistant;
+    } catch (error) {
+      console.error('Assistant取得エラー:', error);
+      assistantId = null;
+    }
+  }
+
+  // 新しいAssistantを作成
+  const assistant = await openai.beta.assistants.create({
+    name: 'Liberty Knowledge Assistant',
+    instructions: `あなたはLibertyの知識アシスタントです。
+ユーザーの質問に対して、提供された知識ベースの情報を使って正確に回答してください。
+知識ベースに情報がない場合は、「その情報は知識ベースにありません」と正直に答えてください。
+回答は丁寧で分かりやすく、必要に応じて引用元を示してください。`,
+    model: 'gpt-4o',
+    tools: [{ type: 'file_search' }],
+  });
+
+  assistantId = assistant.id;
+  console.log('新しいAssistantを作成しました:', assistantId);
+
+  return assistant;
+}
+
+/**
+ * Vector Storeを取得または作成
+ */
+export async function getOrCreateVectorStore() {
+  if (vectorStoreId) {
+    try {
+      // @ts-ignore - OpenAI SDK型定義の問題を回避
+      const vectorStore = await openai.beta.vectorStores.retrieve(vectorStoreId);
+      return vectorStore;
+    } catch (error) {
+      console.error('Vector Store取得エラー:', error);
+      vectorStoreId = null;
+    }
+  }
+
+  // 新しいVector Storeを作成
+  // @ts-ignore - OpenAI SDK型定義の問題を回避
+  const vectorStore = await openai.beta.vectorStores.create({
+    name: 'Liberty Knowledge Base',
+  });
+
+  vectorStoreId = vectorStore.id;
+  console.log('新しいVector Storeを作成しました:', vectorStoreId);
+
+  // AssistantにVector Storeを紐付け
+  const assistant = await getOrCreateAssistant();
+  await openai.beta.assistants.update(assistant.id, {
+    tool_resources: {
+      file_search: {
+        vector_store_ids: [vectorStore.id],
+      },
+    },
+  });
+
+  return vectorStore;
+}
+
+/**
+ * ファイルをVector Storeにアップロード
+ */
+export async function uploadFileToVectorStore(file: File) {
+  const vectorStore = await getOrCreateVectorStore();
+
+  // OpenAIにファイルをアップロード
+  const openaiFile = await openai.files.create({
+    file: file,
+    purpose: 'assistants',
+  });
+
+  // Vector Storeにファイルを追加
+  // @ts-ignore - OpenAI SDK型定義の問題を回避
+  await openai.beta.vectorStores.files.create(vectorStore.id, {
+    file_id: openaiFile.id,
+  });
+
+  return {
+    fileId: openaiFile.id,
+    vectorStoreId: vectorStore.id,
+    fileName: file.name,
+  };
+}
+
+/**
+ * Vector Store内のファイル一覧を取得
+ */
+export async function listVectorStoreFiles() {
+  const vectorStore = await getOrCreateVectorStore();
+
+  // @ts-ignore - OpenAI SDK型定義の問題を回避
+  const files = await openai.beta.vectorStores.files.list(vectorStore.id);
+
+  return files.data;
+}
+
+/**
+ * Assistantを使ってチャット
+ */
+export async function chatWithAssistant(
+  message: string,
+  threadId?: string
+): Promise<{
+  response: string;
+  threadId: string;
+  citations: string[];
+}> {
+  const assistant = await getOrCreateAssistant();
+
+  // スレッドを取得または作成
+  let thread;
+  if (threadId) {
+    thread = await openai.beta.threads.retrieve(threadId);
+  } else {
+    thread = await openai.beta.threads.create();
+  }
+
+  // メッセージを追加
+  await openai.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: message,
+  });
+
+  // 実行
+  const run = await openai.beta.threads.runs.create(thread.id, {
+    assistant_id: assistant.id,
+  });
+
+  // 完了まで待機
+  let runStatus = await openai.beta.threads.runs.retrieve(run.id, {
+    thread_id: thread.id,
+  });
+  while (runStatus.status !== 'completed') {
+    if (runStatus.status === 'failed' || runStatus.status === 'cancelled') {
+      throw new Error(`Run failed with status: ${runStatus.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    runStatus = await openai.beta.threads.runs.retrieve(run.id, {
+      thread_id: thread.id,
+    });
+  }
+
+  // レスポンスを取得
+  const messages = await openai.beta.threads.messages.list(thread.id);
+  const lastMessage = messages.data[0];
+
+  let response = '';
+  const citations: string[] = [];
+
+  if (lastMessage.content[0].type === 'text') {
+    response = lastMessage.content[0].text.value;
+
+    // 引用情報を抽出
+    const annotations = lastMessage.content[0].text.annotations;
+    for (const annotation of annotations) {
+      if (annotation.type === 'file_citation') {
+        const fileCitation = annotation.file_citation;
+        citations.push(fileCitation.file_id);
+      }
+    }
+  }
+
+  return {
+    response,
+    threadId: thread.id,
+    citations,
+  };
+}
+
+/**
+ * 初期化: 既存のファイルを読み込む
+ */
+export async function initializeKnowledgeBase() {
+  try {
+    const vectorStore = await getOrCreateVectorStore();
+    const files = await listVectorStoreFiles();
+
+    console.log(`知識ベースを初期化しました。ファイル数: ${files.length}`);
+
+    return {
+      vectorStoreId: vectorStore.id,
+      fileCount: files.length,
+    };
+  } catch (error) {
+    console.error('知識ベース初期化エラー:', error);
+    throw error;
+  }
+}

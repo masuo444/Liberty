@@ -1,20 +1,60 @@
 import { NextResponse } from 'next/server';
-import type { KnowledgeSource } from '@/lib/types';
+import { uploadFileToVectorStore } from '@/lib/openai-assistant';
 
 export async function POST(request: Request) {
-  const { title, type } = (await request.json()) as Partial<KnowledgeSource>;
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
 
-  if (!title || !type) {
-    return NextResponse.json({ message: 'title と type が必要です。' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json(
+        { error: 'ファイルが見つかりません' },
+        { status: 400 }
+      );
+    }
+
+    // ファイルサイズチェック (10MB制限)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: 'ファイルサイズは10MB以下にしてください' },
+        { status: 400 }
+      );
+    }
+
+    // 対応ファイル形式チェック
+    const allowedTypes = [
+      'application/pdf',
+      'text/plain',
+      'text/markdown',
+      'application/json',
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: '対応していないファイル形式です。PDF、TXT、MD、JSONのみ対応しています。' },
+        { status: 400 }
+      );
+    }
+
+    // OpenAI Vector Storeにアップロード
+    const result = await uploadFileToVectorStore(file);
+
+    return NextResponse.json({
+      ok: true,
+      source: {
+        id: result.fileId,
+        title: result.fileName,
+        type: file.type,
+        vectorStoreId: result.vectorStoreId,
+        createdAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('ファイルアップロードエラー:', error);
+    return NextResponse.json(
+      { error: 'ファイルのアップロードに失敗しました' },
+      { status: 500 }
+    );
   }
-
-  // 実際にはアップロードされた PDF や URL を処理し、ベクトルインデックスを更新する
-  const mockSource: KnowledgeSource = {
-    id: crypto.randomUUID(),
-    title,
-    type,
-    createdAt: new Date().toISOString(),
-  };
-
-  return NextResponse.json({ ok: true, source: mockSource });
 }
