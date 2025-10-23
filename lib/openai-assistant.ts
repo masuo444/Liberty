@@ -16,9 +16,9 @@ function getOpenAIClient() {
 }
 
 // Assistant IDとVector Store IDを環境変数で管理
-// 初回実行時に自動作成されます
-let assistantId: string | null = null;
-let vectorStoreId: string | null = null;
+// Vercel環境変数から読み込む、なければ自動作成
+let assistantId: string | null = process.env.OPENAI_ASSISTANT_ID || null;
+let vectorStoreId: string | null = process.env.OPENAI_VECTOR_STORE_ID || null;
 
 /**
  * OpenAI Assistantを取得または作成
@@ -202,12 +202,16 @@ export async function chatWithAssistant(
  */
 export async function initializeKnowledgeBase() {
   try {
+    const assistant = await getOrCreateAssistant();
     const vectorStore = await getOrCreateVectorStore();
     const files = await listVectorStoreFiles();
 
     console.log(`知識ベースを初期化しました。ファイル数: ${files.length}`);
+    console.log(`Assistant ID: ${assistant.id}`);
+    console.log(`Vector Store ID: ${vectorStore.id}`);
 
     return {
+      assistantId: assistant.id,
       vectorStoreId: vectorStore.id,
       fileCount: files.length,
     };
