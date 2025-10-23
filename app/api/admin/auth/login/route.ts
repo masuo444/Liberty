@@ -7,6 +7,13 @@ export async function POST(request: Request) {
 
     const adminPassword = process.env.ADMIN_PASSWORD;
 
+    // デバッグ: 環境変数の存在を確認
+    console.log('環境変数チェック:', {
+      ADMIN_PASSWORD_EXISTS: !!process.env.ADMIN_PASSWORD,
+      ADMIN_PASSWORD_LENGTH: process.env.ADMIN_PASSWORD?.length,
+      NODE_ENV: process.env.NODE_ENV,
+    });
+
     if (!adminPassword) {
       console.error('ADMIN_PASSWORD環境変数が設定されていません');
       return NextResponse.json(
