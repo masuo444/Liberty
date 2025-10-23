@@ -122,9 +122,32 @@ export async function listVectorStoreFiles() {
   const client = getOpenAIClient();
   const vectorStore = await getOrCreateVectorStore();
 
-  const files = await client.beta.vectorStores.files.list(vectorStore.id);
+  const vectorStoreFiles = await client.beta.vectorStores.files.list(vectorStore.id);
 
-  return files.data;
+  // 各ファイルの詳細情報を取得してファイル名を含める
+  const filesWithDetails = await Promise.all(
+    vectorStoreFiles.data.map(async (vectorFile) => {
+      try {
+        const fileDetails = await client.files.retrieve(vectorFile.id);
+        return {
+          id: vectorFile.id,
+          status: vectorFile.status,
+          created_at: vectorFile.created_at,
+          filename: fileDetails.filename,
+        };
+      } catch (error) {
+        console.error(`ファイル詳細取得エラー (${vectorFile.id}):`, error);
+        return {
+          id: vectorFile.id,
+          status: vectorFile.status,
+          created_at: vectorFile.created_at,
+          filename: 'Unknown',
+        };
+      }
+    })
+  );
+
+  return filesWithDetails;
 }
 
 /**

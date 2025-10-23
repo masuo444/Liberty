@@ -15,6 +15,7 @@ export async function GET() {
         id: file.id,
         status: file.status,
         createdAt: file.created_at,
+        filename: file.filename || 'Unknown',
       })),
       count: files.length,
     });

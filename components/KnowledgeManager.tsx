@@ -7,6 +7,7 @@ interface KnowledgeFile {
   id: string;
   status: string;
   createdAt: number;
+  filename?: string;
 }
 
 export function KnowledgeManager() {
@@ -163,7 +164,9 @@ export function KnowledgeManager() {
                 <div className="flex items-center space-x-3">
                   <DocumentIcon className="w-5 h-5 text-blue-400" />
                   <div>
-                    <p className="text-sm font-medium text-white">File ID: {file.id.slice(0, 16)}...</p>
+                    <p className="text-sm font-medium text-white">
+                      {file.filename || `File ID: ${file.id.slice(0, 16)}...`}
+                    </p>
                     <p className="text-xs text-gray-400">
                       {new Date(file.createdAt * 1000).toLocaleString('ja-JP')}
                     </p>
