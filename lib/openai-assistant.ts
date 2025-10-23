@@ -61,7 +61,6 @@ export async function getOrCreateVectorStore() {
 
   if (vectorStoreId) {
     try {
-      // @ts-ignore - OpenAI SDK型定義の問題を回避
       const vectorStore = await client.beta.vectorStores.retrieve(vectorStoreId);
       return vectorStore;
     } catch (error) {
@@ -71,7 +70,6 @@ export async function getOrCreateVectorStore() {
   }
 
   // 新しいVector Storeを作成
-  // @ts-ignore - OpenAI SDK型定義の問題を回避
   const vectorStore = await client.beta.vectorStores.create({
     name: 'Liberty Knowledge Base',
   });
@@ -106,7 +104,6 @@ export async function uploadFileToVectorStore(file: File) {
   });
 
   // Vector Storeにファイルを追加
-  // @ts-ignore - OpenAI SDK型定義の問題を回避
   await client.beta.vectorStores.files.create(vectorStore.id, {
     file_id: openaiFile.id,
   });
@@ -125,7 +122,6 @@ export async function listVectorStoreFiles() {
   const client = getOpenAIClient();
   const vectorStore = await getOrCreateVectorStore();
 
-  // @ts-ignore - OpenAI SDK型定義の問題を回避
   const files = await client.beta.vectorStores.files.list(vectorStore.id);
 
   return files.data;
@@ -165,17 +161,13 @@ export async function chatWithAssistant(
   });
 
   // 完了まで待機
-  let runStatus = await client.beta.threads.runs.retrieve(run.id, {
-    thread_id: thread.id,
-  });
+  let runStatus = await client.beta.threads.runs.retrieve(thread.id, run.id);
   while (runStatus.status !== 'completed') {
     if (runStatus.status === 'failed' || runStatus.status === 'cancelled') {
       throw new Error(`Run failed with status: ${runStatus.status}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    runStatus = await client.beta.threads.runs.retrieve(run.id, {
-      thread_id: thread.id,
-    });
+    runStatus = await client.beta.threads.runs.retrieve(thread.id, run.id);
   }
 
   // レスポンスを取得
