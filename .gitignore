@@ -3,3 +3,12 @@ node_modules
 out
 .env.local
 .DS_Store
+
+# Knowledge files (except samples)
+public/knowledge/documents/*.pdf
+public/knowledge/documents/*.docx
+public/knowledge/data/*.json
+# Keep sample files
+!public/knowledge/data/about.txt
+!public/knowledge/data/faq.txt
+!public/knowledge/README.md
