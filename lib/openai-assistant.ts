@@ -1,8 +1,19 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// OpenAIクライアントの遅延初期化
+let openai: OpenAI | null = null;
+
+function getOpenAIClient() {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 // Assistant IDとVector Store IDを環境変数で管理
 // 初回実行時に自動作成されます
@@ -13,9 +24,11 @@ let vectorStoreId: string | null = null;
  * OpenAI Assistantを取得または作成
  */
 export async function getOrCreateAssistant() {
+  const client = getOpenAIClient();
+
   if (assistantId) {
     try {
-      const assistant = await openai.beta.assistants.retrieve(assistantId);
+      const assistant = await client.beta.assistants.retrieve(assistantId);
       return assistant;
     } catch (error) {
       console.error('Assistant取得エラー:', error);
@@ -24,7 +37,7 @@ export async function getOrCreateAssistant() {
   }
 
   // 新しいAssistantを作成
-  const assistant = await openai.beta.assistants.create({
+  const assistant = await client.beta.assistants.create({
     name: 'Liberty Knowledge Assistant',
     instructions: `あなたはLibertyの知識アシスタントです。
 ユーザーの質問に対して、提供された知識ベースの情報を使って正確に回答してください。
@@ -44,10 +57,12 @@ export async function getOrCreateAssistant() {
  * Vector Storeを取得または作成
  */
 export async function getOrCreateVectorStore() {
+  const client = getOpenAIClient();
+
   if (vectorStoreId) {
     try {
       // @ts-ignore - OpenAI SDK型定義の問題を回避
-      const vectorStore = await openai.beta.vectorStores.retrieve(vectorStoreId);
+      const vectorStore = await client.beta.vectorStores.retrieve(vectorStoreId);
       return vectorStore;
     } catch (error) {
       console.error('Vector Store取得エラー:', error);
@@ -57,7 +72,7 @@ export async function getOrCreateVectorStore() {
 
   // 新しいVector Storeを作成
   // @ts-ignore - OpenAI SDK型定義の問題を回避
-  const vectorStore = await openai.beta.vectorStores.create({
+  const vectorStore = await client.beta.vectorStores.create({
     name: 'Liberty Knowledge Base',
   });
 
@@ -66,7 +81,7 @@ export async function getOrCreateVectorStore() {
 
   // AssistantにVector Storeを紐付け
   const assistant = await getOrCreateAssistant();
-  await openai.beta.assistants.update(assistant.id, {
+  await client.beta.assistants.update(assistant.id, {
     tool_resources: {
       file_search: {
         vector_store_ids: [vectorStore.id],
@@ -81,17 +96,18 @@ export async function getOrCreateVectorStore() {
  * ファイルをVector Storeにアップロード
  */
 export async function uploadFileToVectorStore(file: File) {
+  const client = getOpenAIClient();
   const vectorStore = await getOrCreateVectorStore();
 
   // OpenAIにファイルをアップロード
-  const openaiFile = await openai.files.create({
+  const openaiFile = await client.files.create({
     file: file,
     purpose: 'assistants',
   });
 
   // Vector Storeにファイルを追加
   // @ts-ignore - OpenAI SDK型定義の問題を回避
-  await openai.beta.vectorStores.files.create(vectorStore.id, {
+  await client.beta.vectorStores.files.create(vectorStore.id, {
     file_id: openaiFile.id,
   });
 
@@ -106,10 +122,11 @@ export async function uploadFileToVectorStore(file: File) {
  * Vector Store内のファイル一覧を取得
  */
 export async function listVectorStoreFiles() {
+  const client = getOpenAIClient();
   const vectorStore = await getOrCreateVectorStore();
 
   // @ts-ignore - OpenAI SDK型定義の問題を回避
-  const files = await openai.beta.vectorStores.files.list(vectorStore.id);
+  const files = await client.beta.vectorStores.files.list(vectorStore.id);
 
   return files.data;
 }
@@ -125,29 +142,30 @@ export async function chatWithAssistant(
   threadId: string;
   citations: string[];
 }> {
+  const client = getOpenAIClient();
   const assistant = await getOrCreateAssistant();
 
   // スレッドを取得または作成
   let thread;
   if (threadId) {
-    thread = await openai.beta.threads.retrieve(threadId);
+    thread = await client.beta.threads.retrieve(threadId);
   } else {
-    thread = await openai.beta.threads.create();
+    thread = await client.beta.threads.create();
   }
 
   // メッセージを追加
-  await openai.beta.threads.messages.create(thread.id, {
+  await client.beta.threads.messages.create(thread.id, {
     role: 'user',
     content: message,
   });
 
   // 実行
-  const run = await openai.beta.threads.runs.create(thread.id, {
+  const run = await client.beta.threads.runs.create(thread.id, {
     assistant_id: assistant.id,
   });
 
   // 完了まで待機
-  let runStatus = await openai.beta.threads.runs.retrieve(run.id, {
+  let runStatus = await client.beta.threads.runs.retrieve(run.id, {
     thread_id: thread.id,
   });
   while (runStatus.status !== 'completed') {
@@ -155,13 +173,13 @@ export async function chatWithAssistant(
       throw new Error(`Run failed with status: ${runStatus.status}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    runStatus = await openai.beta.threads.runs.retrieve(run.id, {
+    runStatus = await client.beta.threads.runs.retrieve(run.id, {
       thread_id: thread.id,
     });
   }
 
   // レスポンスを取得
-  const messages = await openai.beta.threads.messages.list(thread.id);
+  const messages = await client.beta.threads.messages.list(thread.id);
   const lastMessage = messages.data[0];
 
   let response = '';
