@@ -14,6 +14,7 @@ export function KnowledgeManager() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // 初回ロード時にファイル一覧を取得
   useEffect(() => {
@@ -57,14 +58,23 @@ export function KnowledgeManager() {
   };
 
   const loadFiles = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const response = await fetch('/api/knowledge/list');
-      if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'ファイル一覧の取得に失敗しました');
+      }
 
       const data = await response.json();
+      console.log('ファイル一覧取得成功:', data);
       setFiles(data.files || []);
     } catch (err) {
       console.error('ファイル一覧取得エラー:', err);
+      setError(err instanceof Error ? err.message : 'ファイル一覧の取得に失敗しました');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,9 +141,10 @@ export function KnowledgeManager() {
           <h3 className="text-lg font-semibold text-white">登録済みファイル</h3>
           <button
             onClick={loadFiles}
-            className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+            disabled={loading}
+            className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            更新
+            {loading ? '読み込み中...' : '更新'}
           </button>
         </div>
 
