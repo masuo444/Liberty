@@ -12,3 +12,4 @@ public/knowledge/data/*.json
 !public/knowledge/data/about.txt
 !public/knowledge/data/faq.txt
 !public/knowledge/README.md
+.vercel
