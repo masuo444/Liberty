@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowUpTrayIcon, DocumentIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface KnowledgeFile {
@@ -14,6 +14,11 @@ export function KnowledgeManager() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
+
+  // 初回ロード時にファイル一覧を取得
+  useEffect(() => {
+    loadFiles();
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
