@@ -41,7 +41,7 @@ export function LicenseGate({ loading, error, onSubmit }: LicenseGateProps) {
             placeholder="LIBERTY-DEMO-2024-FOMUS"
             maxLength={50}
             value={key}
-            onChange={(event) => setKey(event.target.value.toUpperCase())}
+            onChange={(event) => setKey(event.target.value)}
             required
           />
           {error && <p className="text-sm text-red-300">{error}</p>}
