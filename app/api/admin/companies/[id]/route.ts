@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
+import { checkAdminAuth } from '@/lib/auth';
+
 
 // Next.jsに動的レンダリングを強制
 export const dynamic = 'force-dynamic';
@@ -10,6 +12,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const supabase = getSupabaseAdminClient();
     const companyId = params.id;

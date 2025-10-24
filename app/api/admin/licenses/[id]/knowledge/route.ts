@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { listVectorStoreFiles, deleteFileFromVectorStore } from '@/lib/openai-assistant';
+import { checkAdminAuth } from '@/lib/auth';
 
 // ライセンス別ファイル一覧取得
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const { id: licenseId } = params;
 
@@ -26,6 +31,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const { id: licenseId } = params;
     const { searchParams } = new URL(request.url);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
 import type { Company, CompanyUpdate } from '@/lib/supabase/types';
+import { checkAdminAuth } from '@/lib/auth';
+import { validateImageFile, sanitizeFilename } from '@/lib/file-security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,6 +12,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const companyId = params.id;
     const formData = await request.formData();
@@ -22,20 +28,20 @@ export async function POST(
       );
     }
 
+    // セキュリティ検証（MIME type、拡張子、ファイル名のサニタイズ）
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+
     // ファイルサイズチェック (5MB制限)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: '画像ファイルは5MB以下にしてください' },
-        { status: 400 }
-      );
-    }
-
-    // ファイルタイプチェック
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: '画像形式はJPEG、PNG、WebP、GIFのみ対応しています' },
         { status: 400 }
       );
     }
@@ -73,10 +79,12 @@ export async function POST(
       }
     }
 
-    // ファイル名を生成（タイムスタンプ + オリジナル名）
+    // ファイル名を生成（タイムスタンプ + サニタイズ済み拡張子）
     const timestamp = Date.now();
-    const extension = file.name.split('.').pop();
-    const fileName = `${company.name}-${timestamp}.${extension}`;
+    const sanitizedName = sanitizeFilename(file.name);
+    const extension = sanitizedName.substring(sanitizedName.lastIndexOf('.')).toLowerCase();
+    const sanitizedCompanyName = sanitizeFilename(company.name);
+    const fileName = `${sanitizedCompanyName}-${timestamp}${extension}`;
     const filePath = `${companyId}/${fileName}`;
 
     // ファイルをArrayBufferに変換
@@ -144,6 +152,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const companyId = params.id;
     const supabase = getSupabaseAdminClient();

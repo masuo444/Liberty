@@ -3,6 +3,8 @@ import { getSupabaseAdminClient } from '@/lib/supabase/client';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { checkAdminAuth } from '@/lib/auth';
+import { validateImageFile, sanitizeFilename } from '@/lib/file-security';
 
 // Next.jsに動的レンダリングを強制
 export const dynamic = 'force-dynamic';
@@ -13,6 +15,10 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const supabase = getSupabaseAdminClient();
     const { id: licenseId } = params;
@@ -27,11 +33,11 @@ export async function POST(
       );
     }
 
-    // 画像形式をチェック
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
+    // セキュリティ検証（MIME type、拡張子、ファイル名のサニタイズ）
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
       return NextResponse.json(
-        { error: '対応していない画像形式です（JPEG、PNG、WebP、GIF）' },
+        { error: validation.error },
         { status: 400 }
       );
     }
@@ -49,9 +55,10 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // ファイル名を生成（ライセンスIDベース）
-    const extension = file.name.split('.').pop();
-    const filename = `license-${licenseId}-${Date.now()}.${extension}`;
+    // ファイル名を生成（ライセンスIDベース + サニタイズ済み拡張子）
+    const sanitizedName = sanitizeFilename(file.name);
+    const extension = sanitizedName.substring(sanitizedName.lastIndexOf('.')).toLowerCase();
+    const filename = `license-${licenseId}-${Date.now()}${extension}`;
     const filepath = join(process.cwd(), 'public', 'uploads', 'companions', filename);
 
     // ディレクトリが存在しない場合は作成
@@ -115,6 +122,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const supabase = getSupabaseAdminClient();
     const { id: licenseId } = params;

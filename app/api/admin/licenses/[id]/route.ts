@@ -1,13 +1,19 @@
-// @ts-nocheck
-import { NextResponse } from 'next/server';
+import { checkAdminAuth } from '@/lib/auth';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
+import { NextResponse } from 'next/server';
 import type { LicenseUpdate } from '@/lib/supabase/types';
+
+// @ts-nocheck
 
 // ライセンス編集
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const { id } = params;
     const body = await request.json();
@@ -16,7 +22,7 @@ export async function PATCH(
     const supabase = getSupabaseAdminClient();
 
     // 更新データを構築
-    const updateData: LicenseUpdate = {};
+    const updateData: any = {};
     if (expiresAt !== undefined) updateData.expires_at = expiresAt;
     if (maxUsers !== undefined) updateData.max_users = maxUsers;
     if (features !== undefined) updateData.features = features;
@@ -24,8 +30,8 @@ export async function PATCH(
     updateData.updated_at = new Date().toISOString();
 
     // @ts-ignore - Supabase type inference issue
-    const { data, error } = await supabase
-      .from('licenses')
+    const { data, error } = await (supabase
+      .from('licenses') as any)
       .update(updateData)
       .eq('id', id)
       .select(`
@@ -60,13 +66,17 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const { id } = params;
     const supabase = getSupabaseAdminClient();
 
     // ライセンスを取得して企業IDを確認
-    const { data: license, error: fetchError } = await supabase
-      .from('licenses')
+    const { data: license, error: fetchError } = await (supabase
+      .from('licenses') as any)
       .select('company_id')
       .eq('id', id)
       .single();
@@ -79,7 +89,7 @@ export async function DELETE(
       );
     }
 
-    const companyId = license.company_id;
+    const companyId = (license as any).company_id;
 
     // ライセンスを削除
     const { error: deleteError } = await supabase

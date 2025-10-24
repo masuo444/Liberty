@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
+import { checkAdminAuth } from '@/lib/auth';
+
 
 // Next.jsに動的レンダリングを強制
 export const dynamic = 'force-dynamic';

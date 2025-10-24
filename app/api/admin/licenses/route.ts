@@ -1,7 +1,9 @@
-// @ts-nocheck
-import { NextResponse } from 'next/server';
+import { checkAdminAuth } from '@/lib/auth';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
+import { NextResponse } from 'next/server';
 import type { Database } from '@/lib/supabase/types';
+
+// @ts-nocheck
 
 type LicenseInsert = Database['public']['Tables']['licenses']['Insert'];
 type CompanyInsert = Database['public']['Tables']['companies']['Insert'];
@@ -70,8 +72,8 @@ export async function POST(request: Request) {
       phone: companyPhone || null,
     };
 
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
+    const { data: company, error: companyError } = await (supabase
+      .from('companies') as any)
       .insert(companyData)
       .select()
       .single();
@@ -103,8 +105,8 @@ export async function POST(request: Request) {
       },
     };
 
-    const { data: license, error: licenseError } = await supabase
-      .from('licenses')
+    const { data: license, error: licenseError } = await (supabase
+      .from('licenses') as any)
       .insert(licenseData)
       .select(`
         *,

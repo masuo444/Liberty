@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { uploadFileToVectorStore } from '@/lib/openai-assistant';
+import { checkAdminAuth } from '@/lib/auth';
+import { validateDocumentFile } from '@/lib/file-security';
 
 // ライセンス別ファイルアップロード
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 認証チェック
+  const authError = await checkAdminAuth();
+  if (authError) return authError;
+
   try {
     const { id: licenseId } = params;
     const formData = await request.formData();
@@ -18,15 +24,11 @@ export async function POST(
       );
     }
 
-    // サポートされているファイル形式をチェック
-    const supportedExtensions = ['.pdf', '.txt', '.md', '.doc', '.docx', '.csv', '.json'];
-    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-    if (!supportedExtensions.includes(fileExtension)) {
+    // セキュリティ検証（MIME type、拡張子、ファイル名のサニタイズ）
+    const validation = validateDocumentFile(file);
+    if (!validation.valid) {
       return NextResponse.json(
-        {
-          error: `サポートされていないファイル形式です。対応形式: ${supportedExtensions.join(', ')}`
-        },
+        { error: validation.error },
         { status: 400 }
       );
     }

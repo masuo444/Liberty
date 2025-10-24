@@ -1,6 +1,8 @@
-// @ts-nocheck
-import { NextResponse } from 'next/server';
+import { checkAdminAuth } from '@/lib/auth';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
+import { NextResponse } from 'next/server';
+
+// @ts-nocheck
 
 // 利用統計を取得
 export async function GET(request: Request) {
@@ -50,23 +52,23 @@ export async function GET(request: Request) {
     }
 
     // 統計を計算
-    const totalUsers = new Set(logs.map((log) => log.license_id)).size;
+    const totalUsers = new Set((logs as any[]).map((log: any) => log.license_id)).size;
     const activeUsers = new Set(
-      logs
-        .filter((log) => {
+      (logs as any[])
+        .filter((log: any) => {
           const logDate = new Date(log.created_at);
           const daysSinceLog = (now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24);
           return daysSinceLog <= 7;
         })
-        .map((log) => log.license_id)
+        .map((log: any) => log.license_id)
     ).size;
 
-    const totalChats = logs.filter((log) => log.event_type === 'chat').length;
-    const totalVideos = logs.filter((log) => log.event_type === 'video_play').length;
-    const totalFiles = logs.filter((log) => log.event_type === 'knowledge_upload').length;
+    const totalChats = (logs as any[]).filter((log: any) => log.event_type === 'chat').length;
+    const totalVideos = (logs as any[]).filter((log: any) => log.event_type === 'video_play').length;
+    const totalFiles = (logs as any[]).filter((log: any) => log.event_type === 'knowledge_upload').length;
 
     // 最近のログを整形
-    const recentLogs = logs.slice(0, 20).map((log) => ({
+    const recentLogs = (logs as any[]).slice(0, 20).map((log: any) => ({
       id: log.id,
       licenseKey: log.license?.license_key || 'Unknown',
       companyName: log.license?.company?.display_name || 'Unknown',
