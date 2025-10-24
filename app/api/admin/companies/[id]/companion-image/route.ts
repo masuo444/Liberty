@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
+import type { Company, CompanyUpdate } from '@/lib/supabase/types';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,7 +47,7 @@ export async function POST(
       .from('companies')
       .select('id, name, companion_image_url')
       .eq('id', companyId)
-      .single();
+      .single() as { data: Company | null; error: any };
 
     if (companyError || !company) {
       return NextResponse.json(
@@ -106,9 +107,10 @@ export async function POST(
     const imageUrl = publicUrlData.publicUrl;
 
     // データベースを更新
-    const { error: updateError } = await supabase
-      .from('companies')
-      .update({ companion_image_url: imageUrl })
+    const updateData: CompanyUpdate = { companion_image_url: imageUrl };
+    const { error: updateError } = await (supabase
+      .from('companies') as any)
+      .update(updateData)
       .eq('id', companyId);
 
     if (updateError) {
@@ -151,7 +153,7 @@ export async function DELETE(
       .from('companies')
       .select('id, companion_image_url')
       .eq('id', companyId)
-      .single();
+      .single() as { data: Company | null; error: any };
 
     if (companyError || !company) {
       return NextResponse.json(
@@ -190,9 +192,10 @@ export async function DELETE(
     }
 
     // データベースを更新
-    const { error: updateError } = await supabase
-      .from('companies')
-      .update({ companion_image_url: null })
+    const updateData: CompanyUpdate = { companion_image_url: null };
+    const { error: updateError } = await (supabase
+      .from('companies') as any)
+      .update(updateData)
       .eq('id', companyId);
 
     if (updateError) {

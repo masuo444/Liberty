@@ -406,7 +406,6 @@ export function CompanyManager() {
                     <Button
                       onClick={() => imageInputRef.current?.click()}
                       disabled={uploadingImage}
-                      size="sm"
                       className="flex items-center gap-2 bg-liberty-500 hover:bg-liberty-600"
                     >
                       <PhotoIcon className="h-4 w-4" />
@@ -415,7 +414,6 @@ export function CompanyManager() {
                     {selectedCompany.companion_image_url && (
                       <Button
                         onClick={handleDeleteImage}
-                        size="sm"
                         variant="ghost"
                         className="text-red-400 hover:bg-red-500/10"
                       >
