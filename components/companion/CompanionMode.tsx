@@ -28,9 +28,12 @@ export function CompanionMode({ locale, license, layoutMode = 'auto' }: Companio
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
   const [lastResponse, setLastResponse] = useState<string>('');
+  const [lastProcessedLength, setLastProcessedLength] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const isProcessingQueueRef = useRef(false);
 
   const voiceStatus: VoiceStatus = {
     microphoneEnabled: true,
@@ -84,13 +87,20 @@ export function CompanionMode({ locale, license, layoutMode = 'auto' }: Companio
       if (SpeechRecognition) {
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = false;
+        recognitionRef.current.interimResults = true; // 中間結果を有効化
         recognitionRef.current.lang = getVoiceLanguageCode(locale);
 
         recognitionRef.current.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
+          const last = event.results.length - 1;
+          const transcript = event.results[last][0].transcript;
+          const isFinal = event.results[last].isFinal;
+
           setTranscript(transcript);
-          handleVoiceInput(transcript);
+
+          // 最終結果のみ処理
+          if (isFinal) {
+            handleVoiceInput(transcript);
+          }
         };
 
         recognitionRef.current.onend = () => {
@@ -105,31 +115,104 @@ export function CompanionMode({ locale, license, layoutMode = 'auto' }: Companio
     }
   }, [locale]);
 
-  // 最新のAI応答を取得して音声出力
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content !== lastResponse) {
-      const newContent = lastMessage.content;
+  // 文を区切る関数（句点・ピリオド・疑問符・感嘆符で区切る）
+  const splitIntoSentences = (text: string): string[] => {
+    // 日本語、英語、中国語などの句読点に対応
+    const sentenceEndRegex = /([。．？！\?!]+|[\.\!\?]+\s*)/g;
+    const sentences: string[] = [];
+    let lastIndex = 0;
 
-      // ストリーミング中でも、少量のテキストが溜まったら即座に音声再生を開始
-      // 20文字以上で再生開始（より早く）
-      if (!isStreaming || newContent.length > lastResponse.length + 20) {
-        setLastResponse(newContent);
+    text.replace(sentenceEndRegex, (match, p1, offset) => {
+      const sentence = text.slice(lastIndex, offset + match.length).trim();
+      if (sentence) {
+        sentences.push(sentence);
+      }
+      lastIndex = offset + match.length;
+      return match;
+    });
 
-        // 音声出力が有効な場合、自動再生
-        if (license.features.tts && voiceStatus.speakerEnabled) {
-          playVoiceResponse(newContent);
+    // 残りのテキストを追加
+    const remaining = text.slice(lastIndex).trim();
+    if (remaining && (isStreaming === false || remaining.length > 30)) {
+      sentences.push(remaining);
+    }
+
+    return sentences;
+  };
+
+  // 音声キューを処理する関数
+  const processAudioQueue = async () => {
+    if (isProcessingQueueRef.current || audioQueueRef.current.length === 0) {
+      return;
+    }
+
+    isProcessingQueueRef.current = true;
+    setIsSpeaking(true);
+
+    while (audioQueueRef.current.length > 0) {
+      const sentence = audioQueueRef.current.shift();
+      if (sentence) {
+        try {
+          await playVoiceResponse(sentence);
+        } catch (error) {
+          console.error('音声再生エラー:', error);
         }
       }
     }
-  }, [messages, lastResponse, isStreaming, license.features.tts, voiceStatus.speakerEnabled]);
 
-  // 音声出力関数
-  const playVoiceResponse = async (text: string) => {
-    if (!text || isSpeaking) return;
+    isProcessingQueueRef.current = false;
+    setIsSpeaking(false);
+  };
+
+  // 最新のAI応答を取得して文単位で音声出力（リアルタイムストリーミング）
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === 'assistant') {
+      const newContent = lastMessage.content;
+
+      if (newContent.length > lastProcessedLength) {
+        // 新しいテキスト部分のみを抽出
+        const newText = newContent.slice(lastProcessedLength);
+        const fullText = lastResponse + newText;
+
+        // 文単位で分割
+        const sentences = splitIntoSentences(fullText);
+
+        if (sentences.length > 0) {
+          // 最後の文以外をキューに追加（完全な文のみ）
+          const completeSentences = isStreaming ? sentences.slice(0, -1) : sentences;
+
+          completeSentences.forEach((sentence) => {
+            if (sentence.trim() && !audioQueueRef.current.includes(sentence)) {
+              audioQueueRef.current.push(sentence);
+            }
+          });
+
+          // 音声出力が有効な場合、キュー処理を開始
+          if (license.features.tts && voiceStatus.speakerEnabled && audioQueueRef.current.length > 0) {
+            processAudioQueue();
+          }
+
+          // 処理済みの長さを更新
+          const processedText = completeSentences.join('');
+          setLastResponse(processedText);
+          setLastProcessedLength(lastResponse.length + processedText.length);
+        }
+      }
+
+      // ストリーミング終了時にリセット
+      if (!isStreaming && newContent !== lastResponse) {
+        setLastResponse('');
+        setLastProcessedLength(0);
+      }
+    }
+  }, [messages, lastResponse, lastProcessedLength, isStreaming, license.features.tts, voiceStatus.speakerEnabled]);
+
+  // 音声出力関数（単一の文を再生）
+  const playVoiceResponse = async (text: string): Promise<void> => {
+    if (!text) return;
 
     try {
-      setIsSpeaking(true);
 
       const response = await fetch('/api/voice/tts', {
         method: 'POST',
@@ -148,33 +231,30 @@ export function CompanionMode({ locale, license, layoutMode = 'auto' }: Companio
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // 既存の音声を停止
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      // 新しい音声を再生
+      // 新しい音声を再生（前の音声は自動的に上書き）
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
 
-      audio.onended = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-      };
+      // 音声再生を Promise でラップして完了を待つ
+      await new Promise<void>((resolve, reject) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
 
-      audio.onerror = () => {
-        console.error('音声再生エラー');
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-      };
+        audio.onerror = (error) => {
+          console.error('音声再生エラー:', error);
+          URL.revokeObjectURL(audioUrl);
+          reject(error);
+        };
 
-      await audio.play();
+        audio.play().catch(reject);
+      });
+
+      audioRef.current = null;
     } catch (error) {
       console.error('音声出力エラー:', error);
-      setIsSpeaking(false);
+      throw error; // エラーを上位に伝播
     }
   };
 
