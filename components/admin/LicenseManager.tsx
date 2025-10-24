@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, StopCircleIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 
 interface License {
@@ -429,7 +429,11 @@ export function LicenseManager() {
                     }`}
                     title={license.is_active ? '無効化' : '有効化'}
                   >
-                    <PencilIcon className="h-5 w-5" />
+                    {license.is_active ? (
+                      <StopCircleIcon className="h-5 w-5" />
+                    ) : (
+                      <PlayCircleIcon className="h-5 w-5" />
+                    )}
                   </button>
                   <button
                     onClick={() => handleDelete(license.id)}
