@@ -7,7 +7,6 @@ import { UsageStats } from '@/components/admin/UsageStats';
 import { CompanyManager } from '@/components/admin/CompanyManager';
 import { Button } from '@/components/ui/Button';
 import {
-  KeyIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
   ArrowLeftIcon,
@@ -15,11 +14,11 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
-type TabType = 'licenses' | 'stats' | 'companies';
+type TabType = 'management' | 'stats';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>('licenses');
+  const [activeTab, setActiveTab] = useState<TabType>('management');
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
 
@@ -99,15 +98,15 @@ export default function AdminDashboard() {
       {/* タブナビゲーション */}
       <div className="mb-6 flex gap-3">
         <button
-          onClick={() => setActiveTab('licenses')}
+          onClick={() => setActiveTab('management')}
           className={`flex items-center gap-2 rounded-xl px-6 py-3 font-semibold transition-all ${
-            activeTab === 'licenses'
+            activeTab === 'management'
               ? 'bg-liberty-500 text-white shadow-lg shadow-liberty-500/30'
               : 'bg-white/10 text-white/70 hover:bg-white/20'
           }`}
         >
-          <KeyIcon className="h-5 w-5" />
-          ライセンス管理
+          <BuildingOfficeIcon className="h-5 w-5" />
+          ライセンス・企業管理
         </button>
         <button
           onClick={() => setActiveTab('stats')}
@@ -120,24 +119,17 @@ export default function AdminDashboard() {
           <ChartBarIcon className="h-5 w-5" />
           利用統計
         </button>
-        <button
-          onClick={() => setActiveTab('companies')}
-          className={`flex items-center gap-2 rounded-xl px-6 py-3 font-semibold transition-all ${
-            activeTab === 'companies'
-              ? 'bg-liberty-500 text-white shadow-lg shadow-liberty-500/30'
-              : 'bg-white/10 text-white/70 hover:bg-white/20'
-          }`}
-        >
-          <BuildingOfficeIcon className="h-5 w-5" />
-          企業管理
-        </button>
       </div>
 
       {/* コンテンツエリア */}
       <main>
-        {activeTab === 'licenses' && <LicenseManager />}
+        {activeTab === 'management' && (
+          <div className="space-y-8">
+            <LicenseManager />
+            <CompanyManager />
+          </div>
+        )}
         {activeTab === 'stats' && <UsageStats />}
-        {activeTab === 'companies' && <CompanyManager />}
       </main>
     </div>
   );
