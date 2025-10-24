@@ -92,6 +92,63 @@ async function saveCompanyVectorStoreId(companyId: string, vectorStoreId: string
 }
 
 /**
+ * ライセンスのVector Store IDを取得（Supabaseから）
+ */
+async function getLicenseVectorStoreId(licenseId: string): Promise<string | null> {
+  if (!isSupabaseEnabled()) {
+    return null;
+  }
+
+  try {
+    const { getSupabaseAdminClient } = await import('./supabase/client');
+    const supabase = getSupabaseAdminClient();
+
+    const { data, error } = await supabase
+      .from('licenses')
+      .select('openai_vector_store_id')
+      .eq('id', licenseId)
+      .single();
+
+    if (error || !data) {
+      console.error('ライセンスのVector Store ID取得エラー:', error);
+      return null;
+    }
+
+    return data.openai_vector_store_id;
+  } catch (error) {
+    console.error('Supabase接続エラー:', error);
+    return null;
+  }
+}
+
+/**
+ * ライセンスのVector Store IDを保存（Supabaseに）
+ */
+async function saveLicenseVectorStoreId(licenseId: string, vectorStoreId: string) {
+  if (!isSupabaseEnabled()) {
+    console.warn('Supabase未設定のため、Vector Store IDを保存できません');
+    return;
+  }
+
+  try {
+    const { getSupabaseAdminClient } = await import('./supabase/client');
+    const supabase = getSupabaseAdminClient();
+
+    const { error } = await supabase
+      .from('licenses')
+      .update({ openai_vector_store_id: vectorStoreId })
+      .eq('id', licenseId);
+
+    if (error) {
+      console.error('ライセンスのVector Store ID保存エラー:', error);
+      throw new Error('Vector Store IDの保存に失敗しました');
+    }
+  } catch (error) {
+    console.error('Supabase接続エラー:', error);
+  }
+}
+
+/**
  * OpenAI Assistantを取得または作成（全企業共通）
  */
 export async function getOrCreateAssistant() {
@@ -125,12 +182,51 @@ export async function getOrCreateAssistant() {
 }
 
 /**
- * Vector Storeを取得または作成（企業別またはレガシー）
+ * Vector Storeを取得または作成（ライセンス別、企業別、またはレガシー）
  */
-export async function getOrCreateVectorStore(companyId?: string) {
+export async function getOrCreateVectorStore(companyId?: string, licenseId?: string) {
   const client = getOpenAIClient();
 
-  // 企業IDが指定されている場合は企業別Vector Storeを使用
+  // ライセンスIDが指定されている場合はライセンス別Vector Storeを使用（優先）
+  if (licenseId && isSupabaseEnabled()) {
+    const existingVectorStoreId = await getLicenseVectorStoreId(licenseId);
+
+    if (existingVectorStoreId) {
+      try {
+        const vectorStore = await client.beta.vectorStores.retrieve(existingVectorStoreId);
+        return vectorStore;
+      } catch (error) {
+        console.error('Vector Store取得エラー:', error);
+      }
+    }
+
+    // 新しいVector Storeを作成
+    const vectorStore = await client.beta.vectorStores.create({
+      name: `Liberty Knowledge Base - License ${licenseId}`,
+    });
+
+    console.log('新しいVector Storeを作成しました:', vectorStore.id);
+
+    // SupabaseにVector Store IDを保存
+    await saveLicenseVectorStoreId(licenseId, vectorStore.id);
+
+    // AssistantにVector Storeを紐付け
+    const assistant = await getOrCreateAssistant();
+    const currentAssistant = await client.beta.assistants.retrieve(assistant.id);
+    const existingVectorStoreIds = currentAssistant.tool_resources?.file_search?.vector_store_ids || [];
+
+    await client.beta.assistants.update(assistant.id, {
+      tool_resources: {
+        file_search: {
+          vector_store_ids: [...existingVectorStoreIds, vectorStore.id],
+        },
+      },
+    });
+
+    return vectorStore;
+  }
+
+  // 企業IDが指定されている場合は企業別Vector Storeを使用（後方互換性）
   if (companyId && isSupabaseEnabled()) {
     const existingVectorStoreId = await getCompanyVectorStoreId(companyId);
 
@@ -204,9 +300,9 @@ export async function getOrCreateVectorStore(companyId?: string) {
 /**
  * ファイルをVector Storeにアップロード
  */
-export async function uploadFileToVectorStore(file: File, companyId?: string) {
+export async function uploadFileToVectorStore(file: File, companyId?: string, licenseId?: string) {
   const client = getOpenAIClient();
-  const vectorStore = await getOrCreateVectorStore(companyId);
+  const vectorStore = await getOrCreateVectorStore(companyId, licenseId);
 
   // OpenAIにファイルをアップロード（再試行あり）
   const openaiFile = await retryWithBackoff(
@@ -237,9 +333,9 @@ export async function uploadFileToVectorStore(file: File, companyId?: string) {
 /**
  * Vector Store内のファイル一覧を取得
  */
-export async function listVectorStoreFiles(companyId?: string) {
+export async function listVectorStoreFiles(companyId?: string, licenseId?: string) {
   const client = getOpenAIClient();
-  const vectorStore = await getOrCreateVectorStore(companyId);
+  const vectorStore = await getOrCreateVectorStore(companyId, licenseId);
 
   const vectorStoreFiles = await client.beta.vectorStores.files.list(vectorStore.id);
 
@@ -272,9 +368,9 @@ export async function listVectorStoreFiles(companyId?: string) {
 /**
  * ファイルを削除（Vector Storeから）
  */
-export async function deleteFileFromVectorStore(fileId: string, companyId?: string) {
+export async function deleteFileFromVectorStore(fileId: string, companyId?: string, licenseId?: string) {
   const client = getOpenAIClient();
-  const vectorStore = await getOrCreateVectorStore(companyId);
+  const vectorStore = await getOrCreateVectorStore(companyId, licenseId);
 
   // Vector Storeからファイルを削除
   await client.beta.vectorStores.files.del(vectorStore.id, fileId);
@@ -289,6 +385,7 @@ export async function deleteFileFromVectorStore(fileId: string, companyId?: stri
 export async function chatWithAssistant(
   message: string,
   companyId?: string,
+  licenseId?: string,
   threadId?: string
 ): Promise<{
   response: string;
@@ -312,8 +409,8 @@ export async function chatWithAssistant(
     content: message,
   });
 
-  // 実行（企業別Vector Storeを指定）（再試行あり）
-  const vectorStore = await getOrCreateVectorStore(companyId);
+  // 実行（ライセンス別/企業別Vector Storeを指定）（再試行あり）
+  const vectorStore = await getOrCreateVectorStore(companyId, licenseId);
   const run = await retryWithBackoff(
     () => client.beta.threads.runs.create(thread.id, {
       assistant_id: assistant.id,
@@ -371,14 +468,14 @@ export async function chatWithAssistant(
 /**
  * 初期化: 知識ベースを読み込む
  */
-export async function initializeKnowledgeBase(companyId?: string) {
+export async function initializeKnowledgeBase(companyId?: string, licenseId?: string) {
   try {
     const assistant = await getOrCreateAssistant();
-    const vectorStore = await getOrCreateVectorStore(companyId);
-    const files = await listVectorStoreFiles(companyId);
+    const vectorStore = await getOrCreateVectorStore(companyId, licenseId);
+    const files = await listVectorStoreFiles(companyId, licenseId);
 
-    const companyInfo = companyId ? `（企業ID: ${companyId}）` : '';
-    console.log(`知識ベースを初期化しました${companyInfo}。ファイル数: ${files.length}`);
+    const idInfo = licenseId ? `（ライセンスID: ${licenseId}）` : companyId ? `（企業ID: ${companyId}）` : '';
+    console.log(`知識ベースを初期化しました${idInfo}。ファイル数: ${files.length}`);
     console.log(`Assistant ID: ${assistant.id}`);
     console.log(`Vector Store ID: ${vectorStore.id}`);
 

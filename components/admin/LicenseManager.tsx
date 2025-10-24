@@ -1,7 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon, StopCircleIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  TrashIcon,
+  StopCircleIcon,
+  PlayCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  DocumentIcon,
+  PhotoIcon,
+  CloudArrowUpIcon,
+} from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 
 interface License {
@@ -21,6 +31,9 @@ interface License {
     knowledge_upload: boolean;
     analytics: boolean;
   };
+  openai_vector_store_id: string | null;
+  openai_assistant_id: string | null;
+  companion_image_url: string | null;
   created_at: string;
   company: {
     id: string;
@@ -29,6 +42,13 @@ interface License {
     email: string | null;
     phone: string | null;
   };
+}
+
+interface KnowledgeFile {
+  id: string;
+  filename: string;
+  status: string;
+  created_at: number;
 }
 
 interface FormData {
@@ -46,6 +66,10 @@ export function LicenseManager() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedLicenses, setExpandedLicenses] = useState<Set<string>>(new Set());
+  const [knowledgeFiles, setKnowledgeFiles] = useState<Record<string, KnowledgeFile[]>>({});
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     companyName: '',
     companyDisplayName: '',
@@ -171,6 +195,143 @@ export function LicenseManager() {
     } catch (error) {
       console.error('ライセンス更新エラー:', error);
       alert('ライセンスの更新に失敗しました');
+    }
+  };
+
+  // ライセンス展開切り替え
+  const toggleExpand = (licenseId: string) => {
+    setExpandedLicenses((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(licenseId)) {
+        newSet.delete(licenseId);
+      } else {
+        newSet.add(licenseId);
+        // 展開時に知識ベースファイル一覧を取得
+        fetchKnowledgeFiles(licenseId);
+      }
+      return newSet;
+    });
+  };
+
+  // 知識ベースファイル一覧取得
+  const fetchKnowledgeFiles = async (licenseId: string) => {
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}/knowledge`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setKnowledgeFiles((prev) => ({ ...prev, [licenseId]: data.files }));
+      } else {
+        console.error('ファイル一覧取得エラー:', data.error);
+      }
+    } catch (error) {
+      console.error('ファイル一覧取得エラー:', error);
+    }
+  };
+
+  // 知識ベースファイルアップロード
+  const handleFileUpload = async (licenseId: string, file: File) => {
+    try {
+      setUploadingFile(licenseId);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`/api/admin/licenses/${licenseId}/knowledge/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('ファイルをアップロードしました');
+        fetchKnowledgeFiles(licenseId);
+      } else {
+        alert(data.error || 'ファイルのアップロードに失敗しました');
+      }
+    } catch (error) {
+      console.error('ファイルアップロードエラー:', error);
+      alert('ファイルのアップロードに失敗しました');
+    } finally {
+      setUploadingFile(null);
+    }
+  };
+
+  // 知識ベースファイル削除
+  const handleFileDelete = async (licenseId: string, fileId: string) => {
+    if (!confirm('このファイルを削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}/knowledge?fileId=${fileId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('ファイルを削除しました');
+        fetchKnowledgeFiles(licenseId);
+      } else {
+        alert(data.error || 'ファイルの削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('ファイル削除エラー:', error);
+      alert('ファイルの削除に失敗しました');
+    }
+  };
+
+  // コンパニオン画像アップロード
+  const handleImageUpload = async (licenseId: string, file: File) => {
+    try {
+      setUploadingImage(licenseId);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`/api/admin/licenses/${licenseId}/companion-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('コンパニオン画像をアップロードしました');
+        fetchLicenses();
+      } else {
+        alert(data.error || '画像のアップロードに失敗しました');
+      }
+    } catch (error) {
+      console.error('画像アップロードエラー:', error);
+      alert('画像のアップロードに失敗しました');
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  // コンパニオン画像削除
+  const handleImageDelete = async (licenseId: string) => {
+    if (!confirm('このコンパニオン画像を削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}/companion-image`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('コンパニオン画像を削除しました');
+        fetchLicenses();
+      } else {
+        alert(data.error || '画像の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('画像削除エラー:', error);
+      alert('画像の削除に失敗しました');
     }
   };
 
@@ -416,10 +577,29 @@ export function LicenseManager() {
                       )}
                     </div>
                   </div>
+
+                  {/* Vector Store ID */}
+                  {license.openai_vector_store_id && (
+                    <div className="mt-4">
+                      <p className="text-xs text-white/60">Vector Store ID</p>
+                      <p className="font-mono text-xs text-white/80">{license.openai_vector_store_id}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* アクションボタン */}
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => toggleExpand(license.id)}
+                    className="rounded-lg bg-liberty-500/20 p-2 text-liberty-400 transition hover:bg-liberty-500/30"
+                    title="詳細表示"
+                  >
+                    {expandedLicenses.has(license.id) ? (
+                      <ChevronUpIcon className="h-5 w-5" />
+                    ) : (
+                      <ChevronDownIcon className="h-5 w-5" />
+                    )}
+                  </button>
                   <button
                     onClick={() => toggleActive(license)}
                     className={`rounded-lg p-2 transition ${
@@ -444,6 +624,114 @@ export function LicenseManager() {
                   </button>
                 </div>
               </div>
+
+              {/* 展開セクション：知識ベースとコンパニオン画像 */}
+              {expandedLicenses.has(license.id) && (
+                <div className="mt-6 space-y-6 border-t border-white/10 pt-6">
+                  {/* コンパニオン画像管理 */}
+                  <div>
+                    <div className="mb-3 flex items-center gap-2">
+                      <PhotoIcon className="h-5 w-5 text-liberty-400" />
+                      <h4 className="font-semibold">コンパニオン画像</h4>
+                    </div>
+                    <div className="space-y-3">
+                      {license.companion_image_url ? (
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={license.companion_image_url}
+                            alt="コンパニオン画像"
+                            className="h-24 w-24 rounded-lg border border-white/20 object-cover"
+                          />
+                          <button
+                            onClick={() => handleImageDelete(license.id)}
+                            className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/30"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-white/60">画像が設定されていません</p>
+                      )}
+                      <div>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400">
+                          <CloudArrowUpIcon className="h-5 w-5" />
+                          {uploadingImage === license.id ? 'アップロード中...' : '画像をアップロード'}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleImageUpload(license.id, file);
+                            }}
+                            disabled={uploadingImage === license.id}
+                          />
+                        </label>
+                        <p className="mt-1 text-xs text-white/40">対応形式: JPEG, PNG, WebP, GIF（最大5MB）</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 知識ベース管理 */}
+                  <div>
+                    <div className="mb-3 flex items-center gap-2">
+                      <DocumentIcon className="h-5 w-5 text-liberty-400" />
+                      <h4 className="font-semibold">知識ベース</h4>
+                    </div>
+                    <div className="space-y-3">
+                      {/* ファイル一覧 */}
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                        {knowledgeFiles[license.id] && knowledgeFiles[license.id].length > 0 ? (
+                          <div className="space-y-2">
+                            {knowledgeFiles[license.id].map((file) => (
+                              <div
+                                key={file.id}
+                                className="flex items-center justify-between rounded border border-white/10 bg-black/30 p-3"
+                              >
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium">{file.filename}</p>
+                                  <p className="text-xs text-white/60">
+                                    {file.status} • {new Date(file.created_at * 1000).toLocaleDateString('ja-JP')}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleFileDelete(license.id, file.id)}
+                                  className="rounded bg-red-500/20 px-3 py-1 text-xs text-red-400 transition hover:bg-red-500/30"
+                                >
+                                  削除
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-center text-sm text-white/60">ファイルがアップロードされていません</p>
+                        )}
+                      </div>
+
+                      {/* ファイルアップロード */}
+                      <div>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400">
+                          <CloudArrowUpIcon className="h-5 w-5" />
+                          {uploadingFile === license.id ? 'アップロード中...' : 'ファイルをアップロード'}
+                          <input
+                            type="file"
+                            accept=".pdf,.txt,.md,.doc,.docx,.csv,.json"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(license.id, file);
+                            }}
+                            disabled={uploadingFile === license.id}
+                          />
+                        </label>
+                        <p className="mt-1 text-xs text-white/40">
+                          対応形式: PDF, TXT, MD, DOC, DOCX, CSV, JSON（最大50MB）
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -65,6 +65,9 @@ export interface License {
   is_active: boolean;
   max_users: number;
   features: LicenseFeatures;
+  openai_vector_store_id: string | null;
+  openai_assistant_id: string | null;
+  companion_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +92,9 @@ export interface LicenseInsert {
   is_active?: boolean;
   max_users?: number;
   features?: LicenseFeatures;
+  openai_vector_store_id?: string | null;
+  openai_assistant_id?: string | null;
+  companion_image_url?: string | null;
 }
 
 export interface LicenseUpdate {
@@ -98,6 +104,9 @@ export interface LicenseUpdate {
   is_active?: boolean;
   max_users?: number;
   features?: Partial<LicenseFeatures>;
+  openai_vector_store_id?: string | null;
+  openai_assistant_id?: string | null;
+  companion_image_url?: string | null;
   updated_at?: string;
 }
 
