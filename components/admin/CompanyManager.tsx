@@ -237,6 +237,37 @@ export function CompanyManager() {
     }
   };
 
+  // 企業削除
+  const handleDeleteCompany = async (companyId: string, companyName: string) => {
+    if (!confirm(`企業「${companyName}」を削除してもよろしいですか？\n※関連するライセンスが存在する場合は削除できません。`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/companies/${companyId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('企業を削除しました');
+        // 選択中の企業を解除
+        if (selectedCompany?.id === companyId) {
+          setSelectedCompany(null);
+          setFiles([]);
+        }
+        // 企業一覧を再取得
+        fetchCompanies();
+      } else {
+        alert(data.error || '企業の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('企業削除エラー:', error);
+      alert('企業の削除に失敗しました');
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleString('ja-JP');
   };
@@ -268,29 +299,43 @@ export function CompanyManager() {
           ) : (
             <div className="space-y-2">
               {companies.map((company) => (
-                <button
+                <div
                   key={company.id}
-                  onClick={() => handleSelectCompany(company)}
-                  className={`w-full rounded-lg border p-4 text-left transition ${
+                  className={`relative w-full rounded-lg border p-4 transition ${
                     selectedCompany?.id === company.id
                       ? 'border-liberty-400 bg-liberty-500/20'
-                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                      : 'border-white/10 bg-white/5'
                   }`}
                 >
-                  <div className="mb-2 flex items-center gap-2">
-                    <BuildingOfficeIcon className="h-5 w-5 text-liberty-300" />
-                    <span className="font-semibold">{company.display_name}</span>
-                  </div>
-                  <div className="text-xs text-white/60">
-                    <div>ID: {company.name}</div>
-                    {company.openai_vector_store_id && (
-                      <div className="mt-1 flex items-center gap-1 text-green-400">
-                        <CheckCircleIcon className="h-4 w-4" />
-                        Vector Store設定済み
-                      </div>
-                    )}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => handleSelectCompany(company)}
+                    className="w-full text-left"
+                  >
+                    <div className="mb-2 flex items-center gap-2 pr-8">
+                      <BuildingOfficeIcon className="h-5 w-5 text-liberty-300" />
+                      <span className="font-semibold">{company.display_name}</span>
+                    </div>
+                    <div className="text-xs text-white/60">
+                      <div>ID: {company.name}</div>
+                      {company.openai_vector_store_id && (
+                        <div className="mt-1 flex items-center gap-1 text-green-400">
+                          <CheckCircleIcon className="h-4 w-4" />
+                          Vector Store設定済み
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCompany(company.id, company.display_name);
+                    }}
+                    className="absolute right-2 top-2 rounded-lg bg-red-500/20 p-2 text-red-400 transition hover:bg-red-500/30"
+                    title="企業を削除"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
