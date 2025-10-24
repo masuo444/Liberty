@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import {
   BuildingOfficeIcon,
   DocumentTextIcon,
@@ -8,6 +9,7 @@ import {
   ArrowUpTrayIcon,
   CheckCircleIcon,
   XCircleIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 
@@ -18,6 +20,7 @@ interface Company {
   email: string | null;
   phone: string | null;
   openai_vector_store_id: string | null;
+  companion_image_url: string | null;
   created_at: string;
 }
 
@@ -35,7 +38,9 @@ export function CompanyManager() {
   const [loading, setLoading] = useState(true);
   const [filesLoading, setFilesLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // 企業一覧を取得
   const fetchCompanies = async () => {
@@ -153,6 +158,82 @@ export function CompanyManager() {
     } catch (error) {
       console.error('ファイル削除エラー:', error);
       alert('ファイルの削除に失敗しました');
+    }
+  };
+
+  // コンパニオン画像アップロード
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedCompany) return;
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`/api/admin/companies/${selectedCompany.id}/companion-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('コンパニオン画像をアップロードしました');
+        // 企業情報を更新
+        setSelectedCompany({
+          ...selectedCompany,
+          companion_image_url: data.imageUrl,
+        });
+        // 企業一覧も更新
+        fetchCompanies();
+      } else {
+        alert(data.error || 'コンパニオン画像のアップロードに失敗しました');
+      }
+    } catch (error) {
+      console.error('画像アップロードエラー:', error);
+      alert('コンパニオン画像のアップロードに失敗しました');
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
+    }
+  };
+
+  // コンパニオン画像削除
+  const handleDeleteImage = async () => {
+    if (!selectedCompany) return;
+
+    if (!confirm('コンパニオン画像を削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/companies/${selectedCompany.id}/companion-image`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('コンパニオン画像を削除しました');
+        // 企業情報を更新
+        setSelectedCompany({
+          ...selectedCompany,
+          companion_image_url: null,
+        });
+        // 企業一覧も更新
+        fetchCompanies();
+      } else {
+        alert(data.error || 'コンパニオン画像の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('画像削除エラー:', error);
+      alert('コンパニオン画像の削除に失敗しました');
     }
   };
 
@@ -309,6 +390,58 @@ export function CompanyManager() {
                   ))}
                 </div>
               )}
+
+              {/* コンパニオン画像 */}
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold">コンパニオン画像</p>
+                  <div className="flex gap-2">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      size="sm"
+                      className="flex items-center gap-2 bg-liberty-500 hover:bg-liberty-600"
+                    >
+                      <PhotoIcon className="h-4 w-4" />
+                      {uploadingImage ? 'アップロード中...' : '画像変更'}
+                    </Button>
+                    {selectedCompany.companion_image_url && (
+                      <Button
+                        onClick={handleDeleteImage}
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:bg-red-500/10"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {selectedCompany.companion_image_url ? (
+                  <div className="relative aspect-square w-32 overflow-hidden rounded-lg">
+                    <Image
+                      src={selectedCompany.companion_image_url}
+                      alt="コンパニオン画像"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex aspect-square w-32 items-center justify-center rounded-lg border border-dashed border-white/20 bg-white/5">
+                    <PhotoIcon className="h-12 w-12 text-white/30" />
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-white/60">
+                  JPEG、PNG、WebP、GIF形式（最大5MB）
+                </p>
+              </div>
 
               {/* Vector Store情報 */}
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">

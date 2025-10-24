@@ -232,7 +232,7 @@ export function CompanionMode({ locale, license, layoutMode = 'auto' }: Companio
             isListening ? 'scale-110 shadow-liberty-500/50 ring-4 ring-liberty-400/50' : ''
           } ${isStreaming ? 'animate-pulse' : ''}`}>
             <Image
-              src="/companion-character.png"
+              src={license.companionImageUrl || '/companion-character.png'}
               alt="コンパニオンキャラクター"
               fill
               className="object-cover"

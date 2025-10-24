@@ -7,6 +7,14 @@ const baseConfig = {
   reactStrictMode: true,
   images: {
     domains: [],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'zjwzovsbycughlwqjepn.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 };
 

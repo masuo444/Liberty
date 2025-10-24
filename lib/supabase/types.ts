@@ -30,6 +30,7 @@ export interface Company {
   phone: string | null;
   openai_vector_store_id: string | null;
   openai_assistant_id: string | null;
+  companion_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,7 @@ export interface CompanyInsert {
   phone?: string | null;
   openai_vector_store_id?: string | null;
   openai_assistant_id?: string | null;
+  companion_image_url?: string | null;
 }
 
 export interface CompanyUpdate {
@@ -51,6 +53,7 @@ export interface CompanyUpdate {
   phone?: string | null;
   openai_vector_store_id?: string | null;
   openai_assistant_id?: string | null;
+  companion_image_url?: string | null;
 }
 
 // ライセンス

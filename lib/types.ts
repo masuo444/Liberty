@@ -16,6 +16,7 @@ export type LicensePayload = {
   expiresAt: string;
   companyId?: string;
   companyName?: string;
+  companionImageUrl?: string;
   maxUsers?: number;
 };
 

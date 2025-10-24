@@ -58,6 +58,7 @@ export async function POST(request: Request) {
         expiresAt: licenseData.expires_at,
         companyId: licenseData.company_id,
         companyName: licenseData.company.display_name,
+        companionImageUrl: licenseData.company.companion_image_url || undefined,
         maxUsers: licenseData.max_users,
       },
     });
