@@ -30,9 +30,10 @@ export async function GET() {
     console.log('[Companies API] 取得成功:', data?.length || 0, '件');
     return NextResponse.json({ companies: data });
   } catch (error) {
-    console.error('企業一覧取得エラー:', error);
+    console.error('[Companies API] catchエラー:', error);
+    const errorMessage = error instanceof Error ? error.message : 'サーバーエラーが発生しました';
     return NextResponse.json(
-      { error: 'サーバーエラーが発生しました' },
+      { error: errorMessage, details: String(error) },
       { status: 500 }
     );
   }
