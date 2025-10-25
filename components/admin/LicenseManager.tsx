@@ -65,6 +65,7 @@ interface Video {
   display_order: number;
   is_active: boolean;
   license_id: string | null;
+  video_type: 'youtube' | 'file';
   created_at: string;
   updated_at: string;
 }
@@ -391,14 +392,47 @@ export function LicenseManager() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('動画を追加しました');
+        alert('YouTube動画を追加しました');
         fetchVideos(licenseId);
       } else {
-        alert(data.error || '動画の追加に失敗しました');
+        alert(data.error || 'YouTube動画の追加に失敗しました');
       }
     } catch (error) {
-      console.error('動画追加エラー:', error);
-      alert('動画の追加に失敗しました');
+      console.error('YouTube動画追加エラー:', error);
+      alert('YouTube動画の追加に失敗しました');
+    } finally {
+      setUploadingVideo(null);
+    }
+  };
+
+  // 動画ファイルアップロード（Vercel Blob）
+  const handleVideoFileUpload = async (licenseId: string, file: File, title: string, description?: string) => {
+    try {
+      setUploadingVideo(licenseId);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      if (description) {
+        formData.append('description', description);
+      }
+
+      const response = await fetch(`/api/admin/licenses/${licenseId}/videos`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('動画ファイルをアップロードしました');
+        fetchVideos(licenseId);
+      } else {
+        alert(data.error || '動画ファイルのアップロードに失敗しました');
+      }
+    } catch (error) {
+      console.error('動画ファイルアップロードエラー:', error);
+      alert('動画ファイルのアップロードに失敗しました');
     } finally {
       setUploadingVideo(null);
     }
@@ -815,7 +849,7 @@ export function LicenseManager() {
                                 <div className="flex-1">
                                   <p className="text-sm font-medium">{video.title}</p>
                                   <p className="text-xs text-white/60">
-                                    {video.description || '説明なし'} • {video.license_id ? 'ライセンス専用' : '全体共有'}
+                                    {video.description || '説明なし'} • {video.video_type === 'youtube' ? 'YouTube' : 'ファイル'} • {video.license_id ? 'ライセンス専用' : '全体共有'}
                                   </p>
                                 </div>
                                 {video.license_id === license.id && (
@@ -834,26 +868,63 @@ export function LicenseManager() {
                         )}
                       </div>
 
-                      {/* YouTube動画追加 */}
-                      <div>
-                        <button
-                          onClick={() => {
-                            const youtubeUrl = prompt('YouTubeの動画URLを入力してください:\n例: https://www.youtube.com/watch?v=xxxxx');
-                            if (youtubeUrl) {
-                              const title = prompt('動画のタイトルを入力してください:');
-                              if (title) {
-                                const description = prompt('動画の説明を入力してください（省略可）:');
-                                handleVideoAdd(license.id, youtubeUrl, title, description || undefined);
+                      {/* 動画追加オプション */}
+                      <div className="space-y-2">
+                        {/* YouTube動画追加 */}
+                        <div>
+                          <button
+                            onClick={() => {
+                              const youtubeUrl = prompt('YouTubeの動画URLを入力してください:\n例: https://www.youtube.com/watch?v=xxxxx');
+                              if (youtubeUrl) {
+                                const title = prompt('動画のタイトルを入力してください:');
+                                if (title) {
+                                  const description = prompt('動画の説明を入力してください（省略可）:');
+                                  handleVideoAdd(license.id, youtubeUrl, title, description || undefined);
+                                }
                               }
-                            }
-                          }}
-                          disabled={uploadingVideo === license.id}
-                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400 disabled:opacity-50"
-                        >
-                          <FilmIcon className="h-5 w-5" />
-                          {uploadingVideo === license.id ? '追加中...' : 'YouTube動画を追加'}
-                        </button>
-                        <p className="mt-1 text-xs text-white/40">YouTubeの動画URLを入力してください（容量制限なし）</p>
+                            }}
+                            disabled={uploadingVideo === license.id}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400 disabled:opacity-50"
+                          >
+                            <FilmIcon className="h-5 w-5" />
+                            {uploadingVideo === license.id ? '追加中...' : 'YouTube動画を追加'}
+                          </button>
+                          <p className="mt-1 text-xs text-white/40">公開可能な動画（容量制限なし・無料）</p>
+                        </div>
+
+                        {/* ファイルアップロード */}
+                        <div>
+                          <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-liberty-400/60 bg-liberty-500/10 px-4 py-2 text-sm transition hover:border-liberty-400 hover:bg-liberty-500/20 disabled:opacity-50">
+                            <CloudArrowUpIcon className="h-5 w-5" />
+                            {uploadingVideo === license.id ? 'アップロード中...' : 'プライベート動画をアップロード'}
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  // ファイルサイズチェック
+                                  const maxSize = 500 * 1024 * 1024; // 500MB
+                                  if (file.size > maxSize) {
+                                    alert('動画ファイルは500MB以下にしてください（Vercel Proプラン制限）');
+                                    return;
+                                  }
+                                  const title = prompt('動画のタイトルを入力してください:');
+                                  if (title) {
+                                    const description = prompt('動画の説明を入力してください（省略可）:');
+                                    await handleVideoFileUpload(license.id, file, title, description || undefined);
+                                  }
+                                }
+                                e.target.value = '';
+                              }}
+                              disabled={uploadingVideo === license.id}
+                            />
+                          </label>
+                          <p className="mt-1 text-xs text-white/40">
+                            非公開動画・ツアー動画（最大500MB・Vercel Proプラン必須）
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -10,11 +10,7 @@ interface VideoItem {
   description: string | null;
   src: string;
   isYouTube: boolean;
-}
-
-// YouTube埋め込みURLかどうかを判定
-function isYouTubeUrl(url: string): boolean {
-  return url.includes('youtube.com/embed/') || url.includes('youtu.be/');
+  videoType: 'youtube' | 'file';
 }
 
 export function PromoPlayer() {
@@ -41,7 +37,8 @@ export function PromoPlayer() {
             title: v.title,
             description: v.description,
             src: v.video_url,
-            isYouTube: isYouTubeUrl(v.video_url),
+            isYouTube: v.video_type === 'youtube',
+            videoType: v.video_type,
           }));
           setVideos(videoItems);
         }

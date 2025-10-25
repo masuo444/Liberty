@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
 import { checkAdminAuth } from '@/lib/auth';
+import { del } from '@vercel/blob';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -43,8 +44,30 @@ export async function DELETE(
       );
     }
 
-    // YouTube動画の場合はファイル削除不要（URLのみなので）
-    console.log('[License Video Delete API] 動画削除対象:', video.video_url);
+    // ファイル型の動画の場合はVercel Blobから削除
+    if (video.video_type === 'file') {
+      try {
+        await del(video.video_url);
+        console.log('[License Video Delete API] 動画ファイル削除:', video.video_url);
+      } catch (error) {
+        console.error('[License Video Delete API] 動画ファイル削除エラー:', error);
+        // ファイル削除エラーでも続行
+      }
+
+      // サムネイルがある場合は削除
+      if (video.thumbnail_url) {
+        try {
+          await del(video.thumbnail_url);
+          console.log('[License Video Delete API] サムネイル削除:', video.thumbnail_url);
+        } catch (error) {
+          console.error('[License Video Delete API] サムネイル削除エラー:', error);
+          // ファイル削除エラーでも続行
+        }
+      }
+    } else {
+      // YouTube動画の場合はファイル削除不要（URLのみなので）
+      console.log('[License Video Delete API] YouTube動画削除:', video.video_url);
+    }
 
     // データベースから削除
     // @ts-ignore - Supabase type inference issue

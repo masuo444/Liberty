@@ -165,6 +165,7 @@ export interface Video {
   display_order: number;
   is_active: boolean;
   license_id: string | null;
+  video_type: 'youtube' | 'file';
   created_at: string;
   updated_at: string;
 }
@@ -178,6 +179,7 @@ export interface VideoInsert {
   display_order?: number;
   is_active?: boolean;
   license_id?: string | null;
+  video_type?: 'youtube' | 'file';
 }
 
 export interface VideoUpdate {
@@ -188,5 +190,6 @@ export interface VideoUpdate {
   display_order?: number;
   is_active?: boolean;
   license_id?: string | null;
+  video_type?: 'youtube' | 'file';
   updated_at?: string;
 }
