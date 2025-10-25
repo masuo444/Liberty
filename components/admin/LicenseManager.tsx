@@ -12,6 +12,7 @@ import {
   PhotoIcon,
   CloudArrowUpIcon,
   PaintBrushIcon,
+  FilmIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import { CustomizationEditor } from './CustomizationEditor';
@@ -660,7 +661,7 @@ export function LicenseManager() {
                 </div>
               </div>
 
-              {/* 展開セクション：知識ベースとコンパニオン画像 */}
+              {/* 展開セクション：コンパニオン画像、動画、知識ベース */}
               {expandedLicenses.has(license.id) && (
                 <div className="mt-6 space-y-6 border-t border-white/10 pt-6">
                   {/* コンパニオン画像管理 */}
@@ -704,6 +705,31 @@ export function LicenseManager() {
                         </label>
                         <p className="mt-1 text-xs text-white/40">対応形式: JPEG, PNG, WebP, GIF（最大5MB）</p>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* 動画管理 */}
+                  <div>
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FilmIcon className="h-5 w-5 text-liberty-400" />
+                        <h4 className="font-semibold">動画管理</h4>
+                      </div>
+                      <a
+                        href="/admin/videos"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-liberty-500/20 px-3 py-1 text-sm text-liberty-400 transition hover:bg-liberty-500/30"
+                      >
+                        動画管理画面を開く
+                      </a>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                      <p className="text-sm text-white/60">
+                        動画は全ライセンス共通で管理されます。
+                        <br />
+                        動画の追加・編集・削除は「動画管理画面を開く」ボタンから行ってください。
+                      </p>
                     </div>
                   </div>
 

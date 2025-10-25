@@ -1,18 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
-import { writeFile, unlink } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 import { checkAdminAuth } from '@/lib/auth';
 import { validateImageFile, sanitizeFilename } from '@/lib/file-security';
 
-// Next.jsに動的レンダリングを強制
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// コンパニオン画像アップロード（ライセンス別）
+// コンパニオン画像アップロード（ライセンス経由）
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   // 認証チェック
@@ -20,20 +16,18 @@ export async function POST(
   if (authError) return authError;
 
   try {
-    const supabase = getSupabaseAdminClient();
-    const { id: licenseId } = params;
-
+    const licenseId = params.id;
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
     if (!file) {
       return NextResponse.json(
-        { error: 'ファイルが指定されていません' },
+        { error: '画像ファイルが指定されていません' },
         { status: 400 }
       );
     }
 
-    // セキュリティ検証（MIME type、拡張子、ファイル名のサニタイズ）
+    // セキュリティ検証
     const validation = validateImageFile(file);
     if (!validation.valid) {
       return NextResponse.json(
@@ -42,84 +36,120 @@ export async function POST(
       );
     }
 
-    // ファイルサイズチェック（5MB制限）
+    // ファイルサイズチェック (5MB制限)
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: '画像サイズが大きすぎます（最大5MB）' },
+        { error: '画像ファイルは5MB以下にしてください' },
         { status: 400 }
       );
     }
 
-    // ファイルを保存
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const supabase = getSupabaseAdminClient();
 
-    // ファイル名を生成（ライセンスIDベース + サニタイズ済み拡張子）
-    const sanitizedName = sanitizeFilename(file.name);
-    const extension = sanitizedName.substring(sanitizedName.lastIndexOf('.')).toLowerCase();
-    const filename = `license-${licenseId}-${Date.now()}${extension}`;
-    const filepath = join(process.cwd(), 'public', 'uploads', 'companions', filename);
+    // ライセンスと企業情報を取得
+    // @ts-ignore - Supabase type inference issue
+    const { data: license, error: licenseError } = await (supabase
+      .from('licenses') as any)
+      .select('id, company_id, companies(id, name, companion_image_url)')
+      .eq('id', licenseId)
+      .single();
 
-    // ディレクトリが存在しない場合は作成
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'companions');
-    if (!existsSync(uploadsDir)) {
-      const { mkdirSync } = require('fs');
-      mkdirSync(uploadsDir, { recursive: true });
+    if (licenseError || !license) {
+      return NextResponse.json(
+        { error: 'ライセンスが見つかりません' },
+        { status: 404 }
+      );
     }
 
-    await writeFile(filepath, buffer);
+    const company = license.companies as any;
+    const companyId = company.id;
 
-    const imageUrl = `/uploads/companions/${filename}`;
-
-    // 既存の画像を削除（もしあれば）
-    const { data: license } = await supabase
-      .from('licenses')
-      .select('companion_image_url')
-      .eq('id', licenseId)
-      .single<{ companion_image_url: string | null }>();
-
-    if (license?.companion_image_url) {
+    // 古い画像を削除（存在する場合）
+    if (company.companion_image_url) {
       try {
-        const oldFilepath = join(process.cwd(), 'public', license.companion_image_url);
-        if (existsSync(oldFilepath)) {
-          await unlink(oldFilepath);
+        const oldPath = company.companion_image_url.split('/companion-images/')[1];
+        if (oldPath) {
+          await supabase.storage
+            .from('companion-images')
+            .remove([oldPath]);
+          console.log('[License Companion Image API] 古い画像を削除:', oldPath);
         }
       } catch (error) {
-        console.error('旧画像削除エラー:', error);
+        console.error('[License Companion Image API] 古い画像の削除エラー:', error);
       }
     }
 
-    // データベースを更新
-    const { error } = await (supabase
-      .from('licenses') as any)
-      .update({ companion_image_url: imageUrl })
-      .eq('id', licenseId);
+    // ファイル名を生成
+    const timestamp = Date.now();
+    const sanitizedName = sanitizeFilename(file.name);
+    const extension = sanitizedName.substring(sanitizedName.lastIndexOf('.')).toLowerCase();
+    const sanitizedCompanyName = sanitizeFilename(company.name);
+    const fileName = `${sanitizedCompanyName}-${timestamp}${extension}`;
+    const filePath = `${companyId}/${fileName}`;
 
-    if (error) {
-      console.error('画像URL保存エラー:', error);
+    // ファイルをArrayBufferに変換
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Supabase Storageにアップロード
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('companion-images')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('[License Companion Image API] アップロードエラー:', uploadError);
       return NextResponse.json(
-        { error: '画像URLの保存に失敗しました' },
+        { error: '画像のアップロードに失敗しました', details: uploadError },
         { status: 500 }
       );
     }
 
+    // 公開URLを取得
+    const { data: publicUrlData } = supabase.storage
+      .from('companion-images')
+      .getPublicUrl(filePath);
+
+    const imageUrl = publicUrlData.publicUrl;
+
+    // 企業のデータベースを更新
+    const { error: updateError } = await (supabase
+      .from('companies') as any)
+      .update({ companion_image_url: imageUrl })
+      .eq('id', companyId);
+
+    if (updateError) {
+      console.error('[License Companion Image API] DB更新エラー:', updateError);
+      // アップロードした画像を削除
+      await supabase.storage.from('companion-images').remove([filePath]);
+      return NextResponse.json(
+        { error: 'データベースの更新に失敗しました', details: updateError },
+        { status: 500 }
+      );
+    }
+
+    console.log('[License Companion Image API] 画像アップロード成功:', imageUrl);
     return NextResponse.json({
-      message: 'コンパニオン画像をアップロードしました',
+      success: true,
       imageUrl,
+      message: 'コンパニオン画像をアップロードしました',
     });
   } catch (error) {
-    console.error('画像アップロードエラー:', error);
+    console.error('[License Companion Image API] エラー:', error);
+    const errorMessage = error instanceof Error ? error.message : '画像のアップロードに失敗しました';
     return NextResponse.json(
-      { error: '画像のアップロードに失敗しました' },
+      { error: errorMessage, details: String(error) },
       { status: 500 }
     );
   }
 }
 
-// コンパニオン画像削除（ライセンス別）
+// コンパニオン画像削除（ライセンス経由）
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   // 認証チェック
@@ -127,54 +157,80 @@ export async function DELETE(
   if (authError) return authError;
 
   try {
+    const licenseId = params.id;
     const supabase = getSupabaseAdminClient();
-    const { id: licenseId } = params;
 
-    // 現在の画像URLを取得
-    const { data: license } = await supabase
-      .from('licenses')
-      .select('companion_image_url')
+    // ライセンスと企業情報を取得
+    // @ts-ignore - Supabase type inference issue
+    const { data: license, error: licenseError } = await (supabase
+      .from('licenses') as any)
+      .select('id, company_id, companies(id, companion_image_url)')
       .eq('id', licenseId)
-      .single<{ companion_image_url: string | null }>();
+      .single();
 
-    if (!license?.companion_image_url) {
+    if (licenseError || !license) {
+      return NextResponse.json(
+        { error: 'ライセンスが見つかりません' },
+        { status: 404 }
+      );
+    }
+
+    const company = license.companies as any;
+    const companyId = company.id;
+
+    if (!company.companion_image_url) {
       return NextResponse.json(
         { error: '削除する画像がありません' },
         { status: 404 }
       );
     }
 
-    // ファイルを削除
-    try {
-      const filepath = join(process.cwd(), 'public', license.companion_image_url);
-      if (existsSync(filepath)) {
-        await unlink(filepath);
-      }
-    } catch (error) {
-      console.error('画像ファイル削除エラー:', error);
+    // URLからファイルパスを抽出
+    const filePath = company.companion_image_url.split('/companion-images/')[1];
+    if (!filePath) {
+      return NextResponse.json(
+        { error: '画像のパスが無効です' },
+        { status: 400 }
+      );
     }
 
-    // データベースを更新
-    const { error } = await (supabase
-      .from('licenses') as any)
-      .update({ companion_image_url: null })
-      .eq('id', licenseId);
+    // Storageから削除
+    const { error: deleteError } = await supabase.storage
+      .from('companion-images')
+      .remove([filePath]);
 
-    if (error) {
-      console.error('画像URL削除エラー:', error);
+    if (deleteError) {
+      console.error('[License Companion Image API] 削除エラー:', deleteError);
       return NextResponse.json(
-        { error: '画像URLの削除に失敗しました' },
+        { error: '画像の削除に失敗しました', details: deleteError },
         { status: 500 }
       );
     }
 
+    // 企業のデータベースを更新
+    const { error: updateError } = await (supabase
+      .from('companies') as any)
+      .update({ companion_image_url: null })
+      .eq('id', companyId);
+
+    if (updateError) {
+      console.error('[License Companion Image API] DB更新エラー:', updateError);
+      return NextResponse.json(
+        { error: 'データベースの更新に失敗しました', details: updateError },
+        { status: 500 }
+      );
+    }
+
+    console.log('[License Companion Image API] 画像削除成功');
     return NextResponse.json({
+      success: true,
       message: 'コンパニオン画像を削除しました',
     });
   } catch (error) {
-    console.error('画像削除エラー:', error);
+    console.error('[License Companion Image API] エラー:', error);
+    const errorMessage = error instanceof Error ? error.message : '画像の削除に失敗しました';
     return NextResponse.json(
-      { error: '画像の削除に失敗しました' },
+      { error: errorMessage, details: String(error) },
       { status: 500 }
     );
   }
