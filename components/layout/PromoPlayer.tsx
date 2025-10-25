@@ -9,6 +9,12 @@ interface VideoItem {
   title: string;
   description: string | null;
   src: string;
+  isYouTube: boolean;
+}
+
+// YouTube埋め込みURLかどうかを判定
+function isYouTubeUrl(url: string): boolean {
+  return url.includes('youtube.com/embed/') || url.includes('youtu.be/');
 }
 
 export function PromoPlayer() {
@@ -35,6 +41,7 @@ export function PromoPlayer() {
             title: v.title,
             description: v.description,
             src: v.video_url,
+            isYouTube: isYouTubeUrl(v.video_url),
           }));
           setVideos(videoItems);
         }
@@ -131,13 +138,21 @@ export function PromoPlayer() {
                 onClick={() => handleVideoClick(index)}
                 className="group relative aspect-video overflow-hidden rounded-lg border border-white/10 bg-black/60 transition hover:border-liberty-300/60 hover:shadow-lg hover:shadow-liberty-500/20"
               >
-                {/* サムネイル（ビデオの最初のフレーム） */}
-                <video
-                  className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
-                  src={video.src}
-                  muted
-                  preload="metadata"
-                />
+                {/* サムネイル */}
+                {video.isYouTube ? (
+                  <img
+                    className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
+                    src={video.src.replace('/embed/', '/vi/') + '/maxresdefault.jpg'}
+                    alt={video.title}
+                  />
+                ) : (
+                  <video
+                    className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
+                    src={video.src}
+                    muted
+                    preload="metadata"
+                  />
+                )}
                 {/* 再生ボタンオーバーレイ */}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition group-hover:bg-black/60">
                   <div className="rounded-full bg-liberty-500/80 p-3 transition group-hover:scale-110 group-hover:bg-liberty-500">
@@ -169,16 +184,26 @@ export function PromoPlayer() {
             {/* 動画プレイヤー */}
             <div className="flex flex-1 items-center justify-center">
               <div className="relative w-full">
-                <video
-                  ref={videoRef}
-                  key={videos[selected].src}
-                  className="w-full rounded-2xl shadow-2xl"
-                  controls
-                  autoPlay
-                >
-                  <source src={videos[selected].src} type="video/mp4" />
-                  お使いのブラウザは動画再生に対応していません。
-                </video>
+                {videos[selected].isYouTube ? (
+                  <iframe
+                    key={videos[selected].src}
+                    className="w-full aspect-video rounded-2xl shadow-2xl"
+                    src={videos[selected].src + '?autoplay=1'}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    ref={videoRef}
+                    key={videos[selected].src}
+                    className="w-full rounded-2xl shadow-2xl"
+                    controls
+                    autoPlay
+                  >
+                    <source src={videos[selected].src} type="video/mp4" />
+                    お使いのブラウザは動画再生に対応していません。
+                  </video>
+                )}
 
                 {/* 前へボタン */}
                 <button
@@ -219,12 +244,20 @@ export function PromoPlayer() {
                       : 'border-white/20 hover:border-liberty-300/60'
                   }`}
                 >
-                  <video
-                    className="h-full w-full object-cover"
-                    src={video.src}
-                    muted
-                    preload="metadata"
-                  />
+                  {video.isYouTube ? (
+                    <img
+                      className="h-full w-full object-cover"
+                      src={video.src.replace('/embed/', '/vi/') + '/maxresdefault.jpg'}
+                      alt={video.title}
+                    />
+                  ) : (
+                    <video
+                      className="h-full w-full object-cover"
+                      src={video.src}
+                      muted
+                      preload="metadata"
+                    />
+                  )}
                   {selected === index && (
                     <div className="absolute inset-0 flex items-center justify-center bg-liberty-500/30">
                       <PlayIcon className="h-6 w-6 text-white" />

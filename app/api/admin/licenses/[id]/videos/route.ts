@@ -1,10 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/client';
 import { checkAdminAuth } from '@/lib/auth';
-import { put } from '@vercel/blob';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// YouTube URLからビデオIDを抽出する関数
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+    /youtube\.com\/embed\/([^&\n?#]+)/,
+    /youtube\.com\/v\/([^&\n?#]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+// YouTube埋め込みURLを生成
+function getYouTubeEmbedUrl(videoId: string): string {
+  return `https://www.youtube.com/embed/${videoId}`;
+}
+
+// YouTubeサムネイルURLを生成
+function getYouTubeThumbnail(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+}
 
 // ライセンス用の動画一覧取得
 export async function GET(
@@ -66,7 +93,7 @@ export async function GET(
   }
 }
 
-// ライセンス用の動画アップロード
+// ライセンス用の動画追加（YouTube URL）
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -77,15 +104,12 @@ export async function POST(
 
   try {
     const licenseId = params.id;
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string | null;
-    const thumbnailFile = formData.get('thumbnail') as File | null;
+    const body = await request.json();
+    const { youtube_url, title, description } = body;
 
-    if (!file) {
+    if (!youtube_url) {
       return NextResponse.json(
-        { error: '動画ファイルが指定されていません' },
+        { error: 'YouTube URLが指定されていません' },
         { status: 400 }
       );
     }
@@ -97,11 +121,11 @@ export async function POST(
       );
     }
 
-    // ファイルサイズチェック (100MB制限)
-    const maxSize = 100 * 1024 * 1024;
-    if (file.size > maxSize) {
+    // YouTube URLからビデオIDを抽出
+    const videoId = extractYouTubeId(youtube_url);
+    if (!videoId) {
       return NextResponse.json(
-        { error: '動画ファイルは100MB以下にしてください' },
+        { error: '有効なYouTube URLを入力してください' },
         { status: 400 }
       );
     }
@@ -124,23 +148,9 @@ export async function POST(
       );
     }
 
-    // 動画ファイルをVercel Blobにアップロード
-    const timestamp = Date.now();
-    const videoFileName = `${licenseId}-${timestamp}-${file.name}`;
-    const videoBlob = await put(videoFileName, file, {
-      access: 'public',
-    });
-
-    let thumbnailUrl: string | null = null;
-
-    // サムネイルがある場合はアップロード
-    if (thumbnailFile) {
-      const thumbnailFileName = `${licenseId}-${timestamp}-thumbnail-${thumbnailFile.name}`;
-      const thumbnailBlob = await put(thumbnailFileName, thumbnailFile, {
-        access: 'public',
-      });
-      thumbnailUrl = thumbnailBlob.url;
-    }
+    // YouTube埋め込みURLとサムネイルURLを生成
+    const embedUrl = getYouTubeEmbedUrl(videoId);
+    const thumbnailUrl = getYouTubeThumbnail(videoId);
 
     // 最大のdisplay_orderを取得
     // @ts-ignore - Supabase type inference issue
@@ -161,7 +171,7 @@ export async function POST(
       .insert({
         title,
         description: description || null,
-        video_url: videoBlob.url,
+        video_url: embedUrl,
         thumbnail_url: thumbnailUrl,
         display_order: displayOrder,
         is_active: true,
@@ -178,15 +188,15 @@ export async function POST(
       );
     }
 
-    console.log('[License Videos API] 動画アップロード成功:', video);
+    console.log('[License Videos API] 動画追加成功:', video);
     return NextResponse.json({
       success: true,
       video,
-      message: '動画をアップロードしました',
+      message: '動画を追加しました',
     });
   } catch (error) {
     console.error('[License Videos API] エラー:', error);
-    const errorMessage = error instanceof Error ? error.message : '動画のアップロードに失敗しました';
+    const errorMessage = error instanceof Error ? error.message : '動画の追加に失敗しました';
     return NextResponse.json(
       { error: errorMessage, details: String(error) },
       { status: 500 }

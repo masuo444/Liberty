@@ -373,33 +373,32 @@ export function LicenseManager() {
     }
   };
 
-  // 動画アップロード
-  const handleVideoUpload = async (licenseId: string, file: File, title: string, description?: string) => {
+  // 動画追加（YouTube URL）
+  const handleVideoAdd = async (licenseId: string, youtubeUrl: string, title: string, description?: string) => {
     try {
       setUploadingVideo(licenseId);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', title);
-      if (description) {
-        formData.append('description', description);
-      }
 
       const response = await fetch(`/api/admin/licenses/${licenseId}/videos`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          youtube_url: youtubeUrl,
+          title,
+          description,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        alert('動画をアップロードしました');
+        alert('動画を追加しました');
         fetchVideos(licenseId);
       } else {
-        alert(data.error || '動画のアップロードに失敗しました');
+        alert(data.error || '動画の追加に失敗しました');
       }
     } catch (error) {
-      console.error('動画アップロードエラー:', error);
-      alert('動画のアップロードに失敗しました');
+      console.error('動画追加エラー:', error);
+      alert('動画の追加に失敗しました');
     } finally {
       setUploadingVideo(null);
     }
@@ -835,29 +834,26 @@ export function LicenseManager() {
                         )}
                       </div>
 
-                      {/* 動画アップロード */}
+                      {/* YouTube動画追加 */}
                       <div>
-                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400">
-                          <FilmIcon className="h-5 w-5" />
-                          {uploadingVideo === license.id ? 'アップロード中...' : '動画をアップロード'}
-                          <input
-                            type="file"
-                            accept="video/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const title = prompt('動画のタイトルを入力してください:');
-                                if (title) {
-                                  const description = prompt('動画の説明を入力してください（省略可）:');
-                                  await handleVideoUpload(license.id, file, title, description || undefined);
-                                }
+                        <button
+                          onClick={() => {
+                            const youtubeUrl = prompt('YouTubeの動画URLを入力してください:\n例: https://www.youtube.com/watch?v=xxxxx');
+                            if (youtubeUrl) {
+                              const title = prompt('動画のタイトルを入力してください:');
+                              if (title) {
+                                const description = prompt('動画の説明を入力してください（省略可）:');
+                                handleVideoAdd(license.id, youtubeUrl, title, description || undefined);
                               }
-                            }}
-                            disabled={uploadingVideo === license.id}
-                          />
-                        </label>
-                        <p className="mt-1 text-xs text-white/40">対応形式: MP4, WebM, MOV など（最大100MB）</p>
+                            }
+                          }}
+                          disabled={uploadingVideo === license.id}
+                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400 disabled:opacity-50"
+                        >
+                          <FilmIcon className="h-5 w-5" />
+                          {uploadingVideo === license.id ? '追加中...' : 'YouTube動画を追加'}
+                        </button>
+                        <p className="mt-1 text-xs text-white/40">YouTubeの動画URLを入力してください（容量制限なし）</p>
                       </div>
                     </div>
                   </div>

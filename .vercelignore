@@ -31,3 +31,10 @@ DEPLOYMENT.md
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Video files
+KUMA
+*.mov
+*.mp4
+*.avi
+*.mkv
