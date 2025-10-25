@@ -154,3 +154,36 @@ export interface UsageLogUpdate {
 export interface LicenseWithCompany extends License {
   company: Company;
 }
+
+// 動画
+export interface Video {
+  id: string;
+  title: string;
+  description: string | null;
+  video_url: string;
+  thumbnail_url: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VideoInsert {
+  id?: string;
+  title: string;
+  description?: string | null;
+  video_url: string;
+  thumbnail_url?: string | null;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface VideoUpdate {
+  title?: string;
+  description?: string | null;
+  video_url?: string;
+  thumbnail_url?: string | null;
+  display_order?: number;
+  is_active?: boolean;
+  updated_at?: string;
+}

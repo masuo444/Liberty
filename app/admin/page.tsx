@@ -77,6 +77,16 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold">管理者ダッシュボード</h1>
           </div>
           <div className="flex gap-3">
+            <Link href="/admin/videos">
+              <Button variant="ghost" className="flex items-center gap-2">
+                動画管理
+              </Button>
+            </Link>
+            <Link href="/admin/knowledge">
+              <Button variant="ghost" className="flex items-center gap-2">
+                知識ベース管理
+              </Button>
+            </Link>
             <Link href="/">
               <Button variant="ghost" className="flex items-center gap-2">
                 <ArrowLeftIcon className="h-5 w-5" />
