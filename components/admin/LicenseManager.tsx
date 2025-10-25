@@ -13,6 +13,7 @@ import {
   CloudArrowUpIcon,
   PaintBrushIcon,
   FilmIcon,
+  SpeakerWaveIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import { CustomizationEditor } from './CustomizationEditor';
@@ -39,6 +40,7 @@ interface License {
   openai_vector_store_id: string | null;
   openai_assistant_id: string | null;
   companion_image_url: string | null;
+  voice_id: string;
   created_at: string;
   company: {
     id: string;
@@ -69,6 +71,19 @@ interface Video {
   created_at: string;
   updated_at: string;
 }
+
+// ElevenLabs音声一覧
+const AVAILABLE_VOICES = [
+  { id: 'Rachel', name: 'Rachel', gender: '女性', description: '落ち着いた、プロフェッショナルな女性の声' },
+  { id: 'Domi', name: 'Domi', gender: '女性', description: '元気で明るい女性の声' },
+  { id: 'Bella', name: 'Bella', gender: '女性', description: '若々しく優しい女性の声' },
+  { id: 'Antoni', name: 'Antoni', gender: '男性', description: 'よく通る、信頼感のある男性の声' },
+  { id: 'Elli', name: 'Elli', gender: '女性', description: '感情豊かな女性の声' },
+  { id: 'Josh', name: 'Josh', gender: '男性', description: '深みのある、落ち着いた男性の声' },
+  { id: 'Arnold', name: 'Arnold', gender: '男性', description: 'クリアで聞き取りやすい男性の声' },
+  { id: 'Adam', name: 'Adam', gender: '男性', description: '深く、ドラマティックな男性の声' },
+  { id: 'Sam', name: 'Sam', gender: '男性', description: '若々しく親しみやすい男性の声' },
+];
 
 interface FormData {
   companyName: string;
@@ -355,6 +370,31 @@ export function LicenseManager() {
     } catch (error) {
       console.error('画像削除エラー:', error);
       alert('画像の削除に失敗しました');
+    }
+  };
+
+  // 音声設定更新
+  const handleVoiceUpdate = async (licenseId: string, voiceId: string) => {
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ voiceId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('音声設定を更新しました');
+        fetchLicenses();
+      } else {
+        alert(data.error || '音声設定の更新に失敗しました');
+      }
+    } catch (error) {
+      console.error('音声設定更新エラー:', error);
+      alert('音声設定の更新に失敗しました');
     }
   };
 
@@ -826,6 +866,41 @@ export function LicenseManager() {
                           />
                         </label>
                         <p className="mt-1 text-xs text-white/40">対応形式: JPEG, PNG, WebP, GIF（最大5MB）</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 音声設定 */}
+                  <div>
+                    <div className="mb-3 flex items-center gap-2">
+                      <SpeakerWaveIcon className="h-5 w-5 text-liberty-400" />
+                      <h4 className="font-semibold">コンパニオン音声設定</h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-white/80">
+                          音声タイプ
+                        </label>
+                        <select
+                          value={license.voice_id || 'Bella'}
+                          onChange={(e) => handleVoiceUpdate(license.id, e.target.value)}
+                          className="w-full rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-white transition hover:border-liberty-400 focus:border-liberty-400 focus:outline-none"
+                        >
+                          {AVAILABLE_VOICES.map((voice) => (
+                            <option key={voice.id} value={voice.id}>
+                              {voice.name} ({voice.gender}) - {voice.description}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-xs text-white/40">
+                          コンパニオンの音声を9種類から選択できます
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-liberty-400/40 bg-liberty-500/10 p-3">
+                        <p className="text-sm text-white/70">
+                          <span className="font-semibold text-liberty-300">現在の設定:</span>{' '}
+                          {AVAILABLE_VOICES.find((v) => v.id === (license.voice_id || 'Bella'))?.name || 'Bella'}
+                        </p>
                       </div>
                     </div>
                   </div>

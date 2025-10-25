@@ -13,3 +13,5 @@ public/knowledge/data/*.json
 !public/knowledge/data/faq.txt
 !public/knowledge/README.md
 .vercel
+KUMA/*.mov
+KUMA/*.mp4

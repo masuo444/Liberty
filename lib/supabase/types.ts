@@ -69,6 +69,7 @@ export interface License {
   openai_vector_store_id: string | null;
   openai_assistant_id: string | null;
   companion_image_url: string | null;
+  voice_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -108,6 +109,7 @@ export interface LicenseInsert {
   openai_vector_store_id?: string | null;
   openai_assistant_id?: string | null;
   companion_image_url?: string | null;
+  voice_id?: string;
 }
 
 export interface LicenseUpdate {
@@ -121,6 +123,7 @@ export interface LicenseUpdate {
   openai_vector_store_id?: string | null;
   openai_assistant_id?: string | null;
   companion_image_url?: string | null;
+  voice_id?: string;
   updated_at?: string;
 }
 
