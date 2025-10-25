@@ -56,6 +56,19 @@ interface KnowledgeFile {
   created_at: number;
 }
 
+interface Video {
+  id: string;
+  title: string;
+  description: string | null;
+  video_url: string;
+  thumbnail_url: string | null;
+  display_order: number;
+  is_active: boolean;
+  license_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface FormData {
   companyName: string;
   companyDisplayName: string;
@@ -75,6 +88,8 @@ export function LicenseManager() {
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<string, KnowledgeFile[]>>({});
   const [uploadingFile, setUploadingFile] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState<string | null>(null);
+  const [videos, setVideos] = useState<Record<string, Video[]>>({});
   const [editingCustomization, setEditingCustomization] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     companyName: '',
@@ -212,8 +227,9 @@ export function LicenseManager() {
         newSet.delete(licenseId);
       } else {
         newSet.add(licenseId);
-        // 展開時に知識ベースファイル一覧を取得
+        // 展開時に知識ベースファイル一覧と動画一覧を取得
         fetchKnowledgeFiles(licenseId);
+        fetchVideos(licenseId);
       }
       return newSet;
     });
@@ -338,6 +354,79 @@ export function LicenseManager() {
     } catch (error) {
       console.error('画像削除エラー:', error);
       alert('画像の削除に失敗しました');
+    }
+  };
+
+  // 動画一覧取得
+  const fetchVideos = async (licenseId: string) => {
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}/videos`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setVideos(prev => ({ ...prev, [licenseId]: data.videos }));
+      } else {
+        console.error('動画取得エラー:', data.error);
+      }
+    } catch (error) {
+      console.error('動画取得エラー:', error);
+    }
+  };
+
+  // 動画アップロード
+  const handleVideoUpload = async (licenseId: string, file: File, title: string, description?: string) => {
+    try {
+      setUploadingVideo(licenseId);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      if (description) {
+        formData.append('description', description);
+      }
+
+      const response = await fetch(`/api/admin/licenses/${licenseId}/videos`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('動画をアップロードしました');
+        fetchVideos(licenseId);
+      } else {
+        alert(data.error || '動画のアップロードに失敗しました');
+      }
+    } catch (error) {
+      console.error('動画アップロードエラー:', error);
+      alert('動画のアップロードに失敗しました');
+    } finally {
+      setUploadingVideo(null);
+    }
+  };
+
+  // 動画削除
+  const handleVideoDelete = async (licenseId: string, videoId: string) => {
+    if (!confirm('この動画を削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}/videos/${videoId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('動画を削除しました');
+        fetchVideos(licenseId);
+      } else {
+        alert(data.error || '動画の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('動画削除エラー:', error);
+      alert('動画の削除に失敗しました');
     }
   };
 
@@ -710,26 +799,66 @@ export function LicenseManager() {
 
                   {/* 動画管理 */}
                   <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FilmIcon className="h-5 w-5 text-liberty-400" />
-                        <h4 className="font-semibold">動画管理</h4>
-                      </div>
-                      <a
-                        href="/admin/videos"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-liberty-500/20 px-3 py-1 text-sm text-liberty-400 transition hover:bg-liberty-500/30"
-                      >
-                        動画管理画面を開く
-                      </a>
+                    <div className="mb-3 flex items-center gap-2">
+                      <FilmIcon className="h-5 w-5 text-liberty-400" />
+                      <h4 className="font-semibold">動画管理</h4>
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                      <p className="text-sm text-white/60">
-                        動画は全ライセンス共通で管理されます。
-                        <br />
-                        動画の追加・編集・削除は「動画管理画面を開く」ボタンから行ってください。
-                      </p>
+                    <div className="space-y-3">
+                      {/* 動画一覧 */}
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                        {videos[license.id] && videos[license.id].length > 0 ? (
+                          <div className="space-y-2">
+                            {videos[license.id].map((video) => (
+                              <div
+                                key={video.id}
+                                className="flex items-center justify-between rounded border border-white/10 bg-black/30 p-3"
+                              >
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium">{video.title}</p>
+                                  <p className="text-xs text-white/60">
+                                    {video.description || '説明なし'} • {video.license_id ? 'ライセンス専用' : '全体共有'}
+                                  </p>
+                                </div>
+                                {video.license_id === license.id && (
+                                  <button
+                                    onClick={() => handleVideoDelete(license.id, video.id)}
+                                    className="rounded bg-red-500/20 px-3 py-1 text-xs text-red-400 transition hover:bg-red-500/30"
+                                  >
+                                    削除
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-center text-sm text-white/60">動画がアップロードされていません</p>
+                        )}
+                      </div>
+
+                      {/* 動画アップロード */}
+                      <div>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/20 bg-black/30 px-4 py-2 text-sm transition hover:border-liberty-400">
+                          <FilmIcon className="h-5 w-5" />
+                          {uploadingVideo === license.id ? 'アップロード中...' : '動画をアップロード'}
+                          <input
+                            type="file"
+                            accept="video/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const title = prompt('動画のタイトルを入力してください:');
+                                if (title) {
+                                  const description = prompt('動画の説明を入力してください（省略可）:');
+                                  await handleVideoUpload(license.id, file, title, description || undefined);
+                                }
+                              }
+                            }}
+                            disabled={uploadingVideo === license.id}
+                          />
+                        </label>
+                        <p className="mt-1 text-xs text-white/40">対応形式: MP4, WebM, MOV など（最大100MB）</p>
+                      </div>
                     </div>
                   </div>
 

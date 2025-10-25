@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { PlayIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { useLicense } from '@/lib/hooks/useLicense';
 import type { Video } from '@/lib/supabase/types';
 
 interface VideoItem {
@@ -11,6 +12,7 @@ interface VideoItem {
 }
 
 export function PromoPlayer() {
+  const { license } = useLicense();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(0);
@@ -21,7 +23,12 @@ export function PromoPlayer() {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const response = await fetch('/api/videos');
+        // ライセンスキーがある場合はパラメータとして渡す
+        const url = license?.licenseKey
+          ? `/api/videos?license_key=${encodeURIComponent(license.licenseKey)}`
+          : '/api/videos';
+
+        const response = await fetch(url);
         const data = await response.json();
         if (response.ok && data.videos.length > 0) {
           const videoItems: VideoItem[] = data.videos.map((v: Video) => ({
@@ -38,7 +45,7 @@ export function PromoPlayer() {
       }
     };
     fetchVideos();
-  }, []);
+  }, [license?.licenseKey]);
 
   // キーボードショートカット
   useEffect(() => {

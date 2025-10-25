@@ -164,6 +164,7 @@ export interface Video {
   thumbnail_url: string | null;
   display_order: number;
   is_active: boolean;
+  license_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -176,6 +177,7 @@ export interface VideoInsert {
   thumbnail_url?: string | null;
   display_order?: number;
   is_active?: boolean;
+  license_id?: string | null;
 }
 
 export interface VideoUpdate {
@@ -185,5 +187,6 @@ export interface VideoUpdate {
   thumbnail_url?: string | null;
   display_order?: number;
   is_active?: boolean;
+  license_id?: string | null;
   updated_at?: string;
 }
