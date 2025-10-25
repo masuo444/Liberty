@@ -47,23 +47,39 @@ export async function POST(
 
     const supabase = getSupabaseAdminClient();
 
-    // ライセンスと企業情報を取得
+    // ライセンス情報を取得
     // @ts-ignore - Supabase type inference issue
     const { data: license, error: licenseError } = await (supabase
       .from('licenses') as any)
-      .select('id, company_id, companies(id, name, companion_image_url)')
+      .select('id, company_id')
       .eq('id', licenseId)
       .single();
 
     if (licenseError || !license) {
+      console.error('[License Companion Image API] ライセンス取得エラー:', licenseError);
       return NextResponse.json(
-        { error: 'ライセンスが見つかりません' },
+        { error: 'ライセンスが見つかりません', details: licenseError },
         { status: 404 }
       );
     }
 
-    const company = license.companies as any;
-    const companyId = company.id;
+    const companyId = license.company_id;
+
+    // 企業情報を取得
+    // @ts-ignore - Supabase type inference issue
+    const { data: company, error: companyError } = await (supabase
+      .from('companies') as any)
+      .select('id, name, companion_image_url')
+      .eq('id', companyId)
+      .single();
+
+    if (companyError || !company) {
+      console.error('[License Companion Image API] 企業取得エラー:', companyError);
+      return NextResponse.json(
+        { error: '企業が見つかりません', details: companyError },
+        { status: 404 }
+      );
+    }
 
     // 古い画像を削除（存在する場合）
     if (company.companion_image_url) {
@@ -160,23 +176,39 @@ export async function DELETE(
     const licenseId = params.id;
     const supabase = getSupabaseAdminClient();
 
-    // ライセンスと企業情報を取得
+    // ライセンス情報を取得
     // @ts-ignore - Supabase type inference issue
     const { data: license, error: licenseError } = await (supabase
       .from('licenses') as any)
-      .select('id, company_id, companies(id, companion_image_url)')
+      .select('id, company_id')
       .eq('id', licenseId)
       .single();
 
     if (licenseError || !license) {
+      console.error('[License Companion Image API] ライセンス取得エラー:', licenseError);
       return NextResponse.json(
-        { error: 'ライセンスが見つかりません' },
+        { error: 'ライセンスが見つかりません', details: licenseError },
         { status: 404 }
       );
     }
 
-    const company = license.companies as any;
-    const companyId = company.id;
+    const companyId = license.company_id;
+
+    // 企業情報を取得
+    // @ts-ignore - Supabase type inference issue
+    const { data: company, error: companyError } = await (supabase
+      .from('companies') as any)
+      .select('id, companion_image_url')
+      .eq('id', companyId)
+      .single();
+
+    if (companyError || !company) {
+      console.error('[License Companion Image API] 企業取得エラー:', companyError);
+      return NextResponse.json(
+        { error: '企業が見つかりません', details: companyError },
+        { status: 404 }
+      );
+    }
 
     if (!company.companion_image_url) {
       return NextResponse.json(
