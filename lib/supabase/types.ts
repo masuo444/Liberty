@@ -65,6 +65,7 @@ export interface License {
   is_active: boolean;
   max_users: number;
   features: LicenseFeatures;
+  customization: LicenseCustomization | null;
   openai_vector_store_id: string | null;
   openai_assistant_id: string | null;
   companion_image_url: string | null;
@@ -84,6 +85,17 @@ export interface LicenseFeatures {
   analytics: boolean;
 }
 
+// カスタマイズ設定
+export interface LicenseCustomization {
+  theme?: 'default' | 'modern' | 'minimal' | 'classic';
+  primaryColor?: string;
+  secondaryColor?: string;
+  backgroundColor?: string;
+  fontFamily?: string;
+  logoUrl?: string;
+  customCss?: string;
+}
+
 export interface LicenseInsert {
   id?: string;
   company_id: string;
@@ -92,6 +104,7 @@ export interface LicenseInsert {
   is_active?: boolean;
   max_users?: number;
   features?: LicenseFeatures;
+  customization?: LicenseCustomization | null;
   openai_vector_store_id?: string | null;
   openai_assistant_id?: string | null;
   companion_image_url?: string | null;
@@ -104,6 +117,7 @@ export interface LicenseUpdate {
   is_active?: boolean;
   max_users?: number;
   features?: Partial<LicenseFeatures>;
+  customization?: LicenseCustomization | null;
   openai_vector_store_id?: string | null;
   openai_assistant_id?: string | null;
   companion_image_url?: string | null;

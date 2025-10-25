@@ -17,7 +17,7 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await request.json();
-    const { expiresAt, maxUsers, features, isActive } = body;
+    const { expiresAt, maxUsers, features, isActive, customization } = body;
 
     const supabase = getSupabaseAdminClient();
 
@@ -27,6 +27,7 @@ export async function PATCH(
     if (maxUsers !== undefined) updateData.max_users = maxUsers;
     if (features !== undefined) updateData.features = features;
     if (isActive !== undefined) updateData.is_active = isActive;
+    if (customization !== undefined) updateData.customization = customization;
     updateData.updated_at = new Date().toISOString();
 
     // @ts-ignore - Supabase type inference issue

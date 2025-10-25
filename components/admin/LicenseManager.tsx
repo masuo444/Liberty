@@ -11,8 +11,11 @@ import {
   DocumentIcon,
   PhotoIcon,
   CloudArrowUpIcon,
+  PaintBrushIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
+import { CustomizationEditor } from './CustomizationEditor';
+import type { LicenseCustomization } from '@/lib/supabase/types';
 
 interface License {
   id: string;
@@ -31,6 +34,7 @@ interface License {
     knowledge_upload: boolean;
     analytics: boolean;
   };
+  customization: LicenseCustomization | null;
   openai_vector_store_id: string | null;
   openai_assistant_id: string | null;
   companion_image_url: string | null;
@@ -70,6 +74,7 @@ export function LicenseManager() {
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<string, KnowledgeFile[]>>({});
   const [uploadingFile, setUploadingFile] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const [editingCustomization, setEditingCustomization] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     companyName: '',
     companyDisplayName: '',
@@ -332,6 +337,29 @@ export function LicenseManager() {
     } catch (error) {
       console.error('画像削除エラー:', error);
       alert('画像の削除に失敗しました');
+    }
+  };
+
+  const handleCustomizationSave = async (licenseId: string, customization: LicenseCustomization) => {
+    try {
+      const response = await fetch(`/api/admin/licenses/${licenseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customization }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('カスタマイズを保存しました');
+        setEditingCustomization(null);
+        fetchLicenses();
+      } else {
+        alert(data.error || 'カスタマイズの保存に失敗しました');
+      }
+    } catch (error) {
+      console.error('カスタマイズ保存エラー:', error);
+      alert('カスタマイズの保存に失敗しました');
     }
   };
 
@@ -601,6 +629,13 @@ export function LicenseManager() {
                     )}
                   </button>
                   <button
+                    onClick={() => setEditingCustomization(license.id)}
+                    className="rounded-lg bg-purple-500/20 p-2 text-purple-400 transition hover:bg-purple-500/30"
+                    title="カスタマイズ設定"
+                  >
+                    <PaintBrushIcon className="h-5 w-5" />
+                  </button>
+                  <button
                     onClick={() => toggleActive(license)}
                     className={`rounded-lg p-2 transition ${
                       license.is_active
@@ -735,6 +770,20 @@ export function LicenseManager() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* カスタマイズエディター */}
+      {editingCustomization && (
+        <CustomizationEditor
+          licenseId={editingCustomization}
+          currentCustomization={
+            licenses.find((l) => l.id === editingCustomization)?.customization || null
+          }
+          onSave={(customization) =>
+            handleCustomizationSave(editingCustomization, customization)
+          }
+          onClose={() => setEditingCustomization(null)}
+        />
       )}
     </div>
   );

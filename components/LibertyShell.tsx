@@ -7,6 +7,7 @@ import { PromoPlayer } from '@/components/layout/PromoPlayer';
 import { QrPanel } from '@/components/layout/QrPanel';
 import { CompanionMode } from '@/components/companion/CompanionMode';
 import { ExhibitionMode } from '@/components/exhibition/ExhibitionMode';
+import { CustomizationApplier } from '@/components/CustomizationApplier';
 import { Button } from '@/components/ui/Button';
 import { useLicense } from '@/lib/hooks/useLicense';
 import { useLocale } from '@/lib/hooks/useLocale';
@@ -36,7 +37,9 @@ export default function LibertyShell() {
   };
 
   return (
-    <div className={`flex min-h-screen flex-col bg-gradient-to-br from-black via-liberty-900 to-black p-6 text-white ${layoutMode === 'vertical' ? 'p-4' : layoutMode === 'auto' ? 'portrait:p-4' : ''}`}>
+    <>
+      <CustomizationApplier customization={license?.customization} />
+      <div className={`flex min-h-screen flex-col bg-gradient-to-br from-black via-liberty-900 to-black p-6 text-white ${layoutMode === 'vertical' ? 'p-4' : layoutMode === 'auto' ? 'portrait:p-4' : ''}`}>
       <header className={`flex items-center justify-between rounded-3xl border border-white/10 bg-white/5 px-6 py-3 shadow-lg shadow-black/50 ${layoutMode === 'vertical' ? 'flex-col gap-3 px-4 py-3' : layoutMode === 'auto' ? 'portrait:flex-col portrait:gap-3 portrait:px-4 portrait:py-3' : ''}`}>
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-white/60">FOMUS Cultural AI Platform</p>
@@ -173,5 +176,6 @@ export default function LibertyShell() {
         )}
       </main>
     </div>
+    </>
   );
 }

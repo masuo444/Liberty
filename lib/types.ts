@@ -10,6 +10,16 @@ export type FeatureFlags = {
   analytics?: boolean;
 };
 
+export type LicenseCustomization = {
+  theme?: 'default' | 'modern' | 'minimal' | 'classic';
+  primaryColor?: string;
+  secondaryColor?: string;
+  backgroundColor?: string;
+  fontFamily?: string;
+  logoUrl?: string;
+  customCss?: string;
+};
+
 export type LicensePayload = {
   licenseKey: string;
   features: FeatureFlags;
@@ -18,6 +28,7 @@ export type LicensePayload = {
   companyName?: string;
   companionImageUrl?: string;
   maxUsers?: number;
+  customization?: LicenseCustomization | null;
 };
 
 export type LicenseResponse = {

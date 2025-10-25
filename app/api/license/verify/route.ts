@@ -60,6 +60,7 @@ export async function POST(request: Request) {
         companyName: licenseData.company.display_name,
         companionImageUrl: licenseData.company.companion_image_url || undefined,
         maxUsers: licenseData.max_users,
+        customization: licenseData.customization || null,
       },
     });
   } catch (error) {
