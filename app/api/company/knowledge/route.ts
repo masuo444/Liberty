@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 
 // 企業認証ヘルパー
 async function authenticateCompany() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const licenseKey = cookieStore.get('company_license_key')?.value;
 
   if (!licenseKey) {

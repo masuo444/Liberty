@@ -7,10 +7,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // コンパニオン画像アップロード（ライセンス経由）
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;
@@ -164,10 +162,8 @@ export async function POST(
 }
 
 // コンパニオン画像削除（ライセンス経由）
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

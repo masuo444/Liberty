@@ -4,10 +4,8 @@ import { checkAdminAuth } from '@/lib/auth';
 import { validateDocumentFile } from '@/lib/file-security';
 
 // ライセンス別ファイルアップロード
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

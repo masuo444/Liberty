@@ -5,10 +5,8 @@ import { del } from '@vercel/blob';
 import type { VideoUpdate } from '@/lib/supabase/types';
 
 // 動画更新
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const authError = await checkAdminAuth();
   if (authError) return authError;
 
@@ -56,10 +54,8 @@ export async function PATCH(
 }
 
 // 動画削除
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const authError = await checkAdminAuth();
   if (authError) return authError;
 

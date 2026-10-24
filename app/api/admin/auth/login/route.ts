@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     // セッションCookieを設定（24時間有効）
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set('admin_session', 'authenticated', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

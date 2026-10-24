@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
  */
 export async function checkAdminAuth(): Promise<NextResponse | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const session = cookieStore.get('admin_session');
 
     if (session?.value !== 'authenticated') {
@@ -34,7 +34,7 @@ export async function checkAdminAuth(): Promise<NextResponse | null> {
  */
 export async function checkCompanyAuth(): Promise<NextResponse | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const session = cookieStore.get('company_session');
 
     if (!session?.value) {
@@ -61,7 +61,7 @@ export async function checkCompanyAuth(): Promise<NextResponse | null> {
  */
 export async function getCompanyIdFromSession(): Promise<string | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const session = cookieStore.get('company_session');
     return session?.value || null;
   } catch (error) {

@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     console.error('TTS エラー:', error);
 
     // エラーログを記録
-    const headersList = headers();
+    const headersList = await headers();
     await logError({
       errorType: 'tts_error',
       errorMessage: error instanceof Error ? error.message : 'Unknown TTS error',

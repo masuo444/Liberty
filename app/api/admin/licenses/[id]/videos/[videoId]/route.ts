@@ -9,8 +9,9 @@ export const runtime = 'nodejs';
 // ライセンス用の動画削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; videoId: string } }
+  props: { params: Promise<{ id: string; videoId: string }> }
 ) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;
@@ -102,8 +103,9 @@ export async function DELETE(
 // ライセンス用の動画更新
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; videoId: string } }
+  props: { params: Promise<{ id: string; videoId: string }> }
 ) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

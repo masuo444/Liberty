@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // セッションCookieを設定（7日間有効）
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set('company_license_key', licenseKey.trim(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

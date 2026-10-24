@@ -8,10 +8,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // 画像アップロード
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;
@@ -148,10 +146,8 @@ export async function POST(
 }
 
 // 画像削除
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

@@ -35,10 +35,8 @@ function getYouTubeThumbnail(videoId: string): string {
 }
 
 // ライセンス用の動画一覧取得
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;
@@ -95,10 +93,8 @@ export async function GET(
 }
 
 // ライセンス用の動画追加（YouTube URL or ファイルアップロード）
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

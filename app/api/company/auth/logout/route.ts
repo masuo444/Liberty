@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 
 export async function POST() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.delete('company_license_key');
 
     return NextResponse.json({ success: true });

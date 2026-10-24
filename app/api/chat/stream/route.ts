@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
       if (!rateLimitStatus.allowed) {
         // Rate Limit超過をログに記録
-        const headersList = headers();
+        const headersList = await headers();
         await logError({
           errorType: 'rate_limit_exceeded',
           errorMessage: `チャット月間制限を超過しました (${rateLimitStatus.currentUsage}/${rateLimitStatus.limit})`,
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     // チャット使用ログを記録
     if (body.license?.companyId) {
-      const headersList = headers();
+      const headersList = await headers();
       await logUsage({
         license_id: body.license.companyId, // ここは実際にはlicense_idが必要
         event_type: 'chat',
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
     console.error('チャットエラー:', error);
 
     // エラーログを記録
-    const headersList = headers();
+    const headersList = await headers();
     await logError({
       errorType: 'openai_error',
       errorMessage: error instanceof Error ? error.message : 'Unknown error',

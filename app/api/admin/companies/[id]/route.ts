@@ -8,10 +8,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // 企業削除
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

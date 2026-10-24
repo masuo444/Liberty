@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const licenseKey = cookieStore.get('company_license_key')?.value;
 
     if (!licenseKey) {

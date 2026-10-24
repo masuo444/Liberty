@@ -3,10 +3,8 @@ import { listVectorStoreFiles, deleteFileFromVectorStore } from '@/lib/openai-as
 import { checkAdminAuth } from '@/lib/auth';
 
 // ライセンス別ファイル一覧取得
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;
@@ -27,10 +25,8 @@ export async function GET(
 }
 
 // ライセンス別ファイル削除
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // 認証チェック
   const authError = await checkAdminAuth();
   if (authError) return authError;

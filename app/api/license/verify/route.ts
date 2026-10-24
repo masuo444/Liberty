@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     // 利用ログを記録
-    const headersList = headers();
+    const headersList = await headers();
     const userAgent = headersList.get('user-agent') || undefined;
     const acceptLanguage = headersList.get('accept-language') || undefined;
     const language = acceptLanguage?.split(',')[0]?.split('-')[0] || undefined;
