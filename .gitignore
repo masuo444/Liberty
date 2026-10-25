@@ -15,3 +15,7 @@ public/knowledge/data/*.json
 .vercel
 KUMA/*.mov
 KUMA/*.mp4
+
+# serwist (generated service worker)
+public/sw.js
+public/sw.js.map

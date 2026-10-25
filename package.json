@@ -4,34 +4,34 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
+    "@serwist/next": "^9.5.13",
     "@supabase/supabase-js": "^2.76.1",
     "@vercel/blob": "^2.0.0",
     "clsx": "^2.1.0",
-    "next": "15.5.28",
-    "next-pwa": "^5.6.0",
+    "next": "16.4.3",
     "openai": "^4.52.0",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "swr": "^2.3.0",
-    "uuid": "^9.0.1"
+    "uuid": "^14.0.3"
   },
   "devDependencies": {
     "@types/node": "20.12.7",
     "@types/qrcode": "^1.5.5",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "@types/uuid": "^10.0.0",
     "autoprefixer": "10.4.17",
-    "eslint": "8.57.0",
-    "eslint-config-next": "15.5.28",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.3",
     "postcss": "8.4.35",
+    "serwist": "^9.5.13",
     "tailwindcss": "3.4.3",
     "typescript": "5.4.4"
   },
